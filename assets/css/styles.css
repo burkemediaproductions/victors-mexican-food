@@ -891,3 +891,23 @@ body.menu-open .site-header .header-actions > a {
     grid-template-columns: 1fr;
   }
 }
+
+.checkout-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.checkout-form label {
+  display: grid;
+  gap: .4rem;
+  font-weight: 800;
+}
+
+.checkout-form input,
+.checkout-form textarea {
+  width: 100%;
+  border: 1.5px solid rgba(29,20,15,.18);
+  border-radius: 14px;
+  padding: .85rem 1rem;
+  background: #fff;
+} 

@@ -170,9 +170,8 @@ function renderCart() {
   });
 
   cartPanel.querySelector('[data-checkout]')?.addEventListener('click', () => {
-    console.log('Cart ready for checkout:', cart);
-    alert('Checkout is next. Cart is working!');
-  });
+     renderCheckout();
+    });
 }
 
 function formatMoney(cents) {
@@ -190,3 +189,63 @@ function escapeHtml(value) {
 }
 
 loadMenu();
+
+
+function renderCheckout() {
+  cartPanel.innerHTML = `
+    <h3>Checkout</h3>
+
+    <form class="checkout-form" data-checkout-form>
+      <label>
+        Name
+        <input name="customerName" type="text" autocomplete="name" required>
+      </label>
+
+      <label>
+        Phone
+        <input name="phone" type="tel" autocomplete="tel" required>
+      </label>
+
+      <label>
+        Email
+        <input name="email" type="email" autocomplete="email">
+      </label>
+
+      <label>
+        Order Notes
+        <textarea name="orderNotes" rows="3" placeholder="Anything we should know?"></textarea>
+      </label>
+
+      <div class="cart-summary">
+        <div><span>Subtotal</span><strong>${formatMoney(getCartSubtotal())}</strong></div>
+      </div>
+
+      <button class="button order-button cart-checkout" type="submit">
+        Review Order
+      </button>
+
+      <button class="cart-remove" type="button" data-back-to-cart>
+        Back to Cart
+      </button>
+    </form>
+  `;
+
+  cartPanel.querySelector('[data-back-to-cart]')?.addEventListener('click', renderCart);
+
+  cartPanel.querySelector('[data-checkout-form]')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+
+    const checkoutData = {
+      customerName: formData.get('customerName'),
+      phone: formData.get('phone'),
+      email: formData.get('email'),
+      orderNotes: formData.get('orderNotes'),
+      cart
+    };
+
+    console.log('Checkout data:', checkoutData);
+    alert('Customer details captured. Next: create Clover order.');
+  });
+}
