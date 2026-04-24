@@ -2,8 +2,10 @@ const MENU_ENDPOINT = '/.netlify/functions/menu';
 
 const categoryContainer = document.querySelector('[data-menu-categories]');
 const itemsContainer = document.querySelector('[data-menu-items]');
+const cartPanel = document.querySelector('[data-cart-panel]');
 
 let menuData = null;
+let cart = [];
 
 async function loadMenu() {
   try {
@@ -13,9 +15,11 @@ async function loadMenu() {
     menuData = data;
 
     renderCategories(data.categories);
-    renderItems(data.categories[0]); // default first category
+    renderItems(data.categories[0]);
+    renderCart();
   } catch (err) {
     console.error('Menu load failed', err);
+    itemsContainer.innerHTML = '<p>Menu is temporarily unavailable. Please try again soon.</p>';
   }
 }
 
@@ -43,18 +47,146 @@ function renderItems(category) {
   itemsContainer.innerHTML = '';
 
   category.items.forEach(item => {
-    const card = document.createElement('div');
+    const card = document.createElement('article');
     card.className = 'menu-item-card';
 
     card.innerHTML = `
-      <h3>${item.name}</h3>
-      <p>${item.description || ''}</p>
-      <strong>${item.priceFormatted}</strong>
-      <button class="button order-button">Add</button>
+      <div>
+        <h3>${escapeHtml(item.name)}</h3>
+        ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ''}
+      </div>
+      <div class="menu-item-card-footer">
+        <strong>${item.priceFormatted}</strong>
+        <button class="button order-button" type="button" data-add-item="${item.id}">
+          Add
+        </button>
+      </div>
     `;
 
+    card.querySelector('[data-add-item]').addEventListener('click', () => addToCart(item));
     itemsContainer.appendChild(card);
   });
+}
+
+function addToCart(item) {
+  const existing = cart.find(cartItem => cartItem.id === item.id);
+
+  if (existing) {
+    existing.quantity += 1;
+  } else {
+    cart.push({
+      id: item.id,
+      name: item.name,
+      price: item.price || 0,
+      priceFormatted: item.priceFormatted,
+      quantity: 1
+    });
+  }
+
+  renderCart();
+}
+
+function updateQuantity(itemId, quantity) {
+  cart = cart
+    .map(item => item.id === itemId ? { ...item, quantity } : item)
+    .filter(item => item.quantity > 0);
+
+  renderCart();
+}
+
+function removeFromCart(itemId) {
+  cart = cart.filter(item => item.id !== itemId);
+  renderCart();
+}
+
+function getCartSubtotal() {
+  return cart.reduce((total, item) => total + item.price * item.quantity, 0);
+}
+
+function renderCart() {
+  if (!cartPanel) return;
+
+  if (!cart.length) {
+    cartPanel.innerHTML = `
+      <h3>Your Order</h3>
+      <p class="cart-empty">Your cart is empty. Add an item to get started.</p>
+    `;
+    return;
+  }
+
+  cartPanel.innerHTML = `
+    <h3>Your Order</h3>
+
+    <div class="cart-items">
+      ${cart.map(item => `
+        <div class="cart-item">
+          <div>
+            <strong>${escapeHtml(item.name)}</strong>
+            <span>${formatMoney(item.price)} each</span>
+          </div>
+
+          <div class="cart-controls">
+            <button type="button" data-decrease="${item.id}" aria-label="Decrease ${escapeHtml(item.name)}">−</button>
+            <span>${item.quantity}</span>
+            <button type="button" data-increase="${item.id}" aria-label="Increase ${escapeHtml(item.name)}">+</button>
+          </div>
+
+          <div class="cart-line-total">
+            ${formatMoney(item.price * item.quantity)}
+          </div>
+
+          <button class="cart-remove" type="button" data-remove="${item.id}">
+            Remove
+          </button>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="cart-summary">
+      <div><span>Subtotal</span><strong>${formatMoney(getCartSubtotal())}</strong></div>
+    </div>
+
+    <button class="button order-button cart-checkout" type="button" data-checkout>
+      Continue to Checkout
+    </button>
+  `;
+
+  cartPanel.querySelectorAll('[data-increase]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = cart.find(i => i.id === btn.dataset.increase);
+      if (item) updateQuantity(item.id, item.quantity + 1);
+    });
+  });
+
+  cartPanel.querySelectorAll('[data-decrease]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = cart.find(i => i.id === btn.dataset.decrease);
+      if (item) updateQuantity(item.id, item.quantity - 1);
+    });
+  });
+
+  cartPanel.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', () => removeFromCart(btn.dataset.remove));
+  });
+
+  cartPanel.querySelector('[data-checkout]')?.addEventListener('click', () => {
+    console.log('Cart ready for checkout:', cart);
+    alert('Checkout is next. Cart is working!');
+  });
+}
+
+function formatMoney(cents) {
+  return `$${(Number(cents || 0) / 100).toFixed(2)}`;
+}
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[char]));
 }
 
 loadMenu();
