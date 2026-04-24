@@ -221,7 +221,7 @@ function renderCheckout() {
       </div>
 
       <button class="button order-button cart-checkout" type="submit">
-        Review Order
+        Place Order
       </button>
 
       <button class="cart-remove" type="button" data-back-to-cart>
@@ -274,10 +274,132 @@ function renderCheckout() {
     `;
 
     cartPanel.querySelector('[data-next-payment]')?.addEventListener('click', () => {
-        alert('Payment iframe is next.');
+    renderPayment(result.orderId, getCartSubtotal());
     });
     } catch (error) {
     alert(error.message);
+    }
+  });
+}
+
+let cloverPaymentInitialized = false;
+let cloverPayment = null;
+
+function renderPayment(orderId, amount) {
+  const cfg = window.VICTORS_CONFIG || {};
+
+  cartPanel.innerHTML = `
+    <h3>Payment</h3>
+    <p>Order ID: <strong>${escapeHtml(orderId)}</strong></p>
+    <p>Total due: <strong>${formatMoney(amount)}</strong></p>
+
+    <form class="checkout-form" id="clover-payment-form">
+      <label>
+        Card Number
+        <div id="card-number" class="clover-field"></div>
+        <small id="card-number-error" class="clover-error"></small>
+      </label>
+
+      <label>
+        Expiration
+        <div id="card-date" class="clover-field"></div>
+        <small id="card-date-error" class="clover-error"></small>
+      </label>
+
+      <label>
+        CVV
+        <div id="card-cvv" class="clover-field"></div>
+        <small id="card-cvv-error" class="clover-error"></small>
+      </label>
+
+      <label>
+        ZIP
+        <div id="card-postal-code" class="clover-field"></div>
+        <small id="card-postal-code-error" class="clover-error"></small>
+      </label>
+
+      <p class="ordering-state" data-payment-status></p>
+
+      <button class="button order-button cart-checkout" type="submit">
+        Pay ${formatMoney(amount)}
+      </button>
+    </form>
+  `;
+
+  if (!window.Clover || !cfg.cloverPublicKey || !cfg.cloverMerchantId) {
+    cartPanel.querySelector('[data-payment-status]').textContent =
+      'Payment setup is missing Clover public configuration.';
+    return;
+  }
+
+  cloverPayment = new Clover(cfg.cloverPublicKey, {
+    merchantId: cfg.cloverMerchantId
+  });
+
+  const elements = cloverPayment.elements();
+
+  const styles = {
+    body: {
+      fontFamily: 'Inter, Segoe UI, sans-serif',
+      fontSize: '16px'
+    },
+    input: {
+      fontSize: '16px'
+    }
+  };
+
+  elements.create('CARD_NUMBER', styles).mount('#card-number');
+  elements.create('CARD_DATE', styles).mount('#card-date');
+  elements.create('CARD_CVV', styles).mount('#card-cvv');
+  elements.create('CARD_POSTAL_CODE', styles).mount('#card-postal-code');
+
+  const form = document.getElementById('clover-payment-form');
+  const status = cartPanel.querySelector('[data-payment-status]');
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    button.textContent = 'Processing...';
+    status.textContent = 'Tokenizing card...';
+
+    try {
+      const tokenResult = await cloverPayment.createToken();
+
+      if (tokenResult.errors) {
+        throw new Error(Object.values(tokenResult.errors).join(' '));
+      }
+
+      status.textContent = 'Charging card...';
+
+      const response = await fetch('/.netlify/functions/pay-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          source: tokenResult.token,
+          amount
+        })
+      });
+
+      const paymentResult = await response.json();
+
+      if (!response.ok) {
+        throw new Error(paymentResult.message || paymentResult.error || 'Payment failed');
+      }
+
+      cart = [];
+
+      cartPanel.innerHTML = `
+        <h3>Payment Received</h3>
+        <p>Thank you! Your order has been paid successfully.</p>
+        <p><strong>Order ID:</strong> ${escapeHtml(orderId)}</p>
+      `;
+    } catch (error) {
+      status.textContent = error.message;
+      button.disabled = false;
+      button.textContent = `Pay ${formatMoney(amount)}`;
     }
   });
 }

@@ -911,3 +911,17 @@ body.menu-open .site-header .header-actions > a {
   padding: .85rem 1rem;
   background: #fff;
 } 
+
+.clover-field {
+  width: 100%;
+  min-height: 54px;
+  border: 1.5px solid rgba(29,20,15,.18);
+  border-radius: 14px;
+  background: #fff;
+  padding: .85rem 1rem;
+}
+
+.clover-error {
+  color: var(--red);
+  font-weight: 800;
+}
