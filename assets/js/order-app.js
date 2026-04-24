@@ -365,7 +365,7 @@ function renderPayment(orderId, amount) {
     status.textContent = 'Tokenizing card...';
 
     try {
-      const tokenResult = await cloverPayment.createToken();
+        const tokenResult = await cloverPayment.createToken();
 
         console.log('Clover token result:', tokenResult);
 
@@ -373,38 +373,24 @@ function renderPayment(orderId, amount) {
         throw new Error(Object.values(tokenResult.errors).join(' '));
         }
 
-        const source =
-        tokenResult?.token ||
-        tokenResult?.id ||
-        tokenResult?.token?.id ||
-        tokenResult?.source ||
-        tokenResult?.result?.token ||
-        tokenResult?.result?.id ||
-        tokenResult?.data?.token ||
-        tokenResult?.data?.id;
-
-        console.log('FULL Clover token result:', JSON.stringify(tokenResult, null, 2));
+        const source = tokenResult.token;
 
         if (!source) {
-        throw new Error(
-            'No Clover payment token returned. Open DevTools Console and copy the FULL Clover token result.'
-        );
+        throw new Error('No Clover payment token returned');
         }
 
-        console.log('Sending payment payload:', {
-        orderId,
-        source,
-        amount
-        });
+        const paymentPayload = {
+        orderId: orderId,
+        source: source,
+        amount: Number(amount)
+        };
+
+        console.log('Sending payment payload:', paymentPayload);
 
         const response = await fetch('/.netlify/functions/pay-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            orderId,
-            source,
-            amount
-        })
+        body: JSON.stringify(paymentPayload)
         });
 
       const paymentResult = await response.json();
