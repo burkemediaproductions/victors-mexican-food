@@ -298,13 +298,19 @@
 <section class="section soft divider" id="ordering">
   <div class="container">
     <div class="section-top" data-reveal>
-      <div><span class="eyebrow">Menu and ordering</span><h2 class="section-title">Clover-ready and easy to manage.</h2></div>
-      <p class="section-intro">The menu can stay visible at all times while online ordering can be toggled on or off in the site configuration. This keeps the experience clean, flexible, and easy to update.</p>
+      <div>
+        <span class="eyebrow">Online ordering</span>
+        <h2 class="section-title">Browse the menu and order online.</h2>
+      </div>
+      <p class="section-intro">Fresh Mexican food from Victor’s, ordered directly from the website.</p>
     </div>
-    <div class="order-shell" data-order-wrap data-reveal>
-      <p class="ordering-state"><strong>Configuration note:</strong> Add Clover embed URLs in assets/js/config.js to activate full menu and ordering embeds.</p>
-      <div class="hero-actions"><a class="button order-button" href="#" data-order-link>Order Online</a><a class="button-outline" href="/menu/">See Menu Highlights</a></div>
-      <iframe class="order-frame" title="Online ordering embed" data-order-frame hidden></iframe>
+
+    <div class="order-shell menu-app" id="menu-app">
+      <div class="menu-category-tabs" data-menu-categories></div>
+      <div class="menu-layout">
+        <div class="menu-items-grid" data-menu-items></div>
+        <aside class="cart-panel" data-cart-panel></aside>
+      </div>
     </div>
   </div>
 </section>
@@ -345,6 +351,8 @@
 </footer>
 <script src="/assets/js/config.js"></script>
 <script src="/assets/js/site.js"></script>
-
+<script src="https://checkout.sandbox.dev.clover.com/sdk.js"></script>
+<script src="https://checkout.clover.com/sdk.js"></script>
+<script src="/assets/js/order-app.js"></script>
 </body>
 </html>
