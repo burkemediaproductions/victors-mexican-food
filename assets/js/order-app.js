@@ -373,10 +373,22 @@ function renderPayment(orderId, amount) {
         throw new Error(Object.values(tokenResult.errors).join(' '));
         }
 
-        const source = tokenResult.token || tokenResult.id;
+        const source =
+        tokenResult?.token ||
+        tokenResult?.id ||
+        tokenResult?.token?.id ||
+        tokenResult?.source ||
+        tokenResult?.result?.token ||
+        tokenResult?.result?.id ||
+        tokenResult?.data?.token ||
+        tokenResult?.data?.id;
+
+        console.log('FULL Clover token result:', JSON.stringify(tokenResult, null, 2));
 
         if (!source) {
-        throw new Error('No Clover payment token returned');
+        throw new Error(
+            'No Clover payment token returned. Open DevTools Console and copy the FULL Clover token result.'
+        );
         }
 
         console.log('Sending payment payload:', {
