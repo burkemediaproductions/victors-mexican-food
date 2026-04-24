@@ -367,21 +367,33 @@ function renderPayment(orderId, amount) {
     try {
       const tokenResult = await cloverPayment.createToken();
 
-      if (tokenResult.errors) {
+        console.log('Clover token result:', tokenResult);
+
+        if (tokenResult.errors) {
         throw new Error(Object.values(tokenResult.errors).join(' '));
-      }
+        }
 
-      status.textContent = 'Charging card...';
+        const source = tokenResult.token || tokenResult.id;
 
-      const response = await fetch('/.netlify/functions/pay-order', {
+        if (!source) {
+        throw new Error('No Clover payment token returned');
+        }
+
+        console.log('Sending payment payload:', {
+        orderId,
+        source,
+        amount
+        });
+
+        const response = await fetch('/.netlify/functions/pay-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          orderId,
-          source: tokenResult.token,
-          amount
+            orderId,
+            source,
+            amount
         })
-      });
+        });
 
       const paymentResult = await response.json();
 
