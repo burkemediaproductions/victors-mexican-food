@@ -232,7 +232,7 @@ function renderCheckout() {
 
   cartPanel.querySelector('[data-back-to-cart]')?.addEventListener('click', renderCart);
 
-  cartPanel.querySelector('[data-checkout-form]')?.addEventListener('submit', (event) => {
+  cartPanel.querySelector('[data-checkout-form]')?.addEventListener('submit', async (event) => {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
@@ -245,7 +245,39 @@ function renderCheckout() {
       cart
     };
 
-    console.log('Checkout data:', checkoutData);
-    alert('Customer details captured. Next: create Clover order.');
+    try {
+    const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Creating Order...';
+
+    const response = await fetch('/.netlify/functions/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(checkoutData)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+        throw new Error(result.message || result.error || 'Order failed');
+    }
+
+    console.log('Clover order created:', result);
+
+    cartPanel.innerHTML = `
+        <h3>Order Created</h3>
+        <p>Your order was created successfully.</p>
+        <p><strong>Order ID:</strong> ${escapeHtml(result.orderId)}</p>
+        <button class="button order-button cart-checkout" type="button" data-next-payment>
+        Continue to Payment
+        </button>
+    `;
+
+    cartPanel.querySelector('[data-next-payment]')?.addEventListener('click', () => {
+        alert('Payment iframe is next.');
+    });
+    } catch (error) {
+    alert(error.message);
+    }
   });
 }
