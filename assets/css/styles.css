@@ -363,7 +363,7 @@ body.menu-open .site-header .header-actions > a {
 .section.light { background: var(--cream); }
 .section.white { background: #fff; }
 .section.soft { background: var(--cream-deep); }
-.section.dark { background: linear-gradient(180deg, #3d2a1f, #231813); color:#fff; }
+.section.dark { background: linear-gradient(180deg, #3d2a1f, #231813); color:#fff; z-index:9; }
 .section.olive { background: linear-gradient(180deg, var(--green), var(--green-deep)); color:#fff; }
 .section.red { background: linear-gradient(180deg, var(--red), var(--red-deep)); color:#fff; }
 .section.divider::after { content:''; position:absolute; left:0; right:0; bottom:-2px; height:80px; z-index:5; }
@@ -521,8 +521,6 @@ body.menu-open .site-header .header-actions > a {
 .video-card {
   position: relative;
   overflow: hidden;
-  box-shadow: var(--shadow);
-  background: #000;
   z-index:99;
 }
 
@@ -642,10 +640,6 @@ body.menu-open .site-header .header-actions > a {
 }
 
 /* Heritage Home Page */
-
-.heritage-video-section {
-  overflow: visible;
-}
 
 .heritage-video-section {
   position: relative;
