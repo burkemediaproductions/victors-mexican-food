@@ -710,6 +710,21 @@ body.menu-open .site-header .header-actions > a {
   }
 }
 
+
+/* Mid Sections Additions */
+
+.mid-section-video-card { 
+  margin:-272px -14vw 0 0
+}
+
+@media (max-width: 980px) {
+  .mid-section-video-card {
+    margin: -112px -200px 0 0;
+    width: calc(100% + 2rem);
+  }
+}
+
+
 /* Story Section */
 .story-film-grid {
   display: grid;
