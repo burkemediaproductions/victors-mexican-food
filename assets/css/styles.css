@@ -32,10 +32,9 @@ iframe { border: 0; }
 .skip-link:focus { top:1rem; }
 :focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
 .container { width: min(calc(100% - 2rem), var(--container)); margin: 0 auto; }
-.site-header { position: sticky; top: 0; z-index: 100; background: rgba(251,246,239,.92); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,.08); transition: background .28s ease, border-color .28s ease, box-shadow .28s ease; }
-.home-page .site-header { position: fixed; top: 0; left: 0; right: 0; background: linear-gradient(0deg, rgba(29,20,15,0), rgba(29,20,15,.6) 38%, rgba(29,20,15,.9)); backdrop-filter: none; border-bottom-color: transparent; border-bottom:none;}
-.home-page.scrolled .site-header { background: rgba(251,246,239,.92); backdrop-filter: blur(12px); border-bottom:solid; border-bottom-color: rgba(0,0,0,.08); box-shadow: 0 16px 40px rgba(29,20,15,.12); }
-.top-strip { background: var(--green); color: #fff; font-size: .9rem; max-height: 48px; overflow: hidden; transition: max-height .28s ease, opacity .28s ease, transform .28s ease; }
+.site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: linear-gradient(0deg, rgba(29,20,15,0), rgba(29,20,15,.6) 38%, rgba(29,20,15,.9)); backdrop-filter: none; border-bottom-color: transparent; border-bottom:none;}
+body.scrolled .site-header { background: rgba(251,246,239,.92); backdrop-filter: blur(12px); border-bottom:solid; border-bottom-color: rgba(0,0,0,.08); box-shadow: 0 16px 40px rgba(29,20,15,.12); }
+.top-strip { background: var(--green); color: #fff; font-size: .9rem; max-height: 48px; transition: max-height .28s ease, opacity .28s ease, transform .28s ease; }
 .home-page.scrolled .top-strip { max-height: 0; opacity: 0; transform: translateY(-100%); }
 .top-strip .container { display:flex; justify-content:space-between; gap:1rem; padding:.5rem 0; flex-wrap:wrap; }
 .header-main { display:flex; justify-content:space-between; align-items:center; gap:1.25rem; padding:.9rem 0; transition: padding .28s ease; }
