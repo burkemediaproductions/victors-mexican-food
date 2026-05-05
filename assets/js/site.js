@@ -38,7 +38,14 @@
   const orderWraps = document.querySelectorAll('[data-order-wrap]');
   const orderFrames = document.querySelectorAll('[data-order-frame]');
   const cfg = window.VICTORS_CONFIG || {};
+
   orderLinks.forEach(link => {
+    const href = link.getAttribute('href') || '';
+
+    // Keep in-page ordering buttons pointed at the on-site menu app so the
+    // Netlify ordering schedule can control whether users can add/checkout.
+    if (href.startsWith('#')) return;
+
     if (cfg.orderingEnabled && cfg.cloverOrderingUrl) link.href = cfg.cloverOrderingUrl;
   });
   orderFrames.forEach(frame => {
