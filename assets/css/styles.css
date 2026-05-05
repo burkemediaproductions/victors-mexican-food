@@ -191,7 +191,7 @@ body.menu-open .menu-toggle span:nth-child(3) {
   z-index: 300;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  background:linear-gradient(180deg, rgba(251,246,239,.85), rgba(242,228,207,.65)),    url('/assets/img/hometown-menu.png') bottom left/100% no-repeat,linear-gradient(180deg, var(--tan), var(--cream));
+  background:linear-gradient(180deg, rgba(251,246,239,0.45), rgba(242,228,207,0.35)),    url('/assets/img/grain.png') center center/cover no-repeat,linear-gradient(180deg, var(--tan), var(--cream));
   color: var(--ink);
   padding: 6.5rem 1.2rem 1.2rem;
   opacity: 0;
@@ -645,6 +645,34 @@ body.menu-open .site-header .header-actions > a {
 
 .heritage-video-section {
   overflow: visible;
+}
+
+.heritage-video-section {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.heritage-video-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url('/assets/img/texturebg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: .78;
+}
+
+.heritage-video-section > .container {
+  position: relative;
+  z-index: 2;
+}
+
+.heritage-video-section::after {
+  z-index: 1;
 }
 
 .heritage-video-layout {
@@ -1141,6 +1169,21 @@ body.menu-open .site-header .header-actions > a {
   padding: .85rem 1rem;
   font-weight: 800;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+}
+
+.category-toggle-icon {
+  width: .72rem;
+  height: .72rem;
+  border-right: 3px solid currentColor;
+  border-bottom: 3px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform .22s ease;
+  flex: 0 0 auto;
+  margin-left: .25rem;
+}
+
+.menu-category-nav:not(.is-collapsed) .category-toggle-icon {
+  transform: rotate(-135deg);
 }
 
 .menu-search-input::placeholder {
