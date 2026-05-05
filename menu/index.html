@@ -91,7 +91,7 @@
   ]
 }</script>
 </head>
-<body class="inner-page menu-page">
+<body class="inner-page menu-page video-hero-page">
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header">
 <div class="top-strip"><div class="container"><span>Palm Desert Since 2018</span><span>Fresh ingredients • Dine-in • Takeout</span></div></div>
@@ -122,15 +122,27 @@
 </div>
 </div>
 <main id="main-content">
-<section class="page-hero inner-page-hero menu-page-hero" style="--page-hero-image: url('/assets/img/menu-hero.jpg');">
-  <div class="container">
+<section class="page-hero inner-page-hero video-page-hero menu-page-hero">
+  <video
+    class="inner-hero-media"
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="none"
+    poster="/assets/video/FoodPan.png"
+    aria-label="Fresh Mexican food at Victor's Mexican Food"
+  >
+    <source src="/assets/video/FoodPan.mp4" type="video/mp4">
+  </video>
+  <div class="container inner-hero-content">
     <div class="breadcrumbs">Home / Menu</div>
     <span class="eyebrow">Menu</span>
     <h1>Order Mexican food online in Palm Desert.</h1>
     <p>Browse tacos, burritos, breakfast favorites, combination plates, drinks, and house favorites from Victor’s Mexican Food.</p>
   </div>
 </section>
-<section class="section white divider divider-right divider-soft">
+<section class="section white">
   <div class="container">
     <div class="section-top" data-reveal>
       <div><span class="eyebrow">Fresh favorites</span><h2 class="section-title">A menu built around flavor and comfort.</h2></div>

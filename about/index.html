@@ -91,7 +91,7 @@
   ]
 }</script>
 </head>
-<body class="inner-page about-page">
+<body class="inner-page about-page video-hero-page">
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header">
 <div class="top-strip"><div class="container"><span>Palm Desert Since 2018</span><span>Fresh ingredients • Dine-in • Takeout</span></div></div>
@@ -122,8 +122,20 @@
 </div>
 </div>
 <main id="main-content">
-<section class="page-hero inner-page-hero about-page-hero" style="--page-hero-image: url('/assets/img/about-hero.jpg');">
-  <div class="container">
+<section class="page-hero inner-page-hero video-page-hero about-page-hero">
+  <video
+    class="inner-hero-media"
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="none"
+    poster="/assets/video/AboutPage.png"
+    aria-label="Victor's Mexican Food About page background video"
+  >
+    <source src="/assets/video/AboutPage.mp4" type="video/mp4">
+  </video>
+  <div class="container inner-hero-content">
     <div class="breadcrumbs">Home / About</div>
     <span class="eyebrow">Our story</span>
     <h1>From El Malacate to Palm Desert.</h1>
@@ -139,7 +151,7 @@
       <p>That dream stayed with him through years of work, learning, patience, and persistence. Today, the restaurant carries the same values that shaped him: family, service, resilience, and food prepared with care.</p>
     </div>
     <div class="story-image-stack" data-reveal>
-      <div class="image-card hero-image-placeholder"><img src="/assets/img/about-story-placeholder.jpg" alt="Victor's Mexican Food family story placeholder"></div>
+      <div class="image-card hero-image-placeholder"><img src="/assets/img/VictorsFamily.jpg" alt="Victor's Family"></div>
       <div class="card"><h3>Rooted in Family</h3><p>From Zacatecas tradition to Palm Desert hospitality, Victor’s is built around the feeling of being welcomed and cared for.</p></div>
     </div>
   </div>
@@ -149,16 +161,18 @@
     <div class="texture-box" data-reveal>
       <span class="eyebrow">Heritage</span>
       <h2 class="section-title-full">Where commerce, travel, and hope crossed paths.</h2>
+      <img src="/assets/img/Hometown.jpg" alt="Victor's hold hometown, on a old Camino Real route."/>
       <p>Victor’s family story traces back to an old Camino Real route, where his grandfather operated a small store that served people passing through the village. That spirit of hospitality still guides the restaurant today.</p>
     </div>
     <div class="texture-box" data-reveal>
       <span class="eyebrow">Today</span>
       <h2 class="section-title-full">Fresh food, friendly service, and a local welcome.</h2>
+      <img src="/assets/img/DoveRelease.jpg" alt="Victor and wife releasing doves."/>
       <p>At Victor’s Mexican Food, guests find satisfying Mexican classics, scratch-made flavor, and a family-owned restaurant experience in the heart of Palm Desert.</p>
     </div>
   </div>
 </section>
-<section class="section white divider divider-right divider-soft">
+<section class="section white">
   <div class="container story-film-grid inner-story-video">
     <div class="story-film-heading" data-reveal>
       <span class="eyebrow">Meet Victor</span>

@@ -91,7 +91,7 @@
   ]
 }</script>
 </head>
-<body class="inner-page reviews-page">
+<body class="inner-page reviews-page video-hero-page">
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header">
 <div class="top-strip"><div class="container"><span>Palm Desert Since 2018</span><span>Fresh ingredients • Dine-in • Takeout</span></div></div>
@@ -122,15 +122,27 @@
 </div>
 </div>
 <main id="main-content">
-<section class="page-hero inner-page-hero reviews-page-hero" style="--page-hero-image: url('/assets/img/reviews-hero.jpg');">
-  <div class="container">
+<section class="page-hero inner-page-hero video-page-hero reviews-page-hero">
+  <video
+    class="inner-hero-media"
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="none"
+    poster="/assets/video/RestaurantPan.png"
+    aria-label="Victor's Mexican Food restaurant interior background video"
+  >
+    <source src="/assets/video/RestaurantPan.mp4" type="video/mp4">
+  </video>
+  <div class="container inner-hero-content">
     <div class="breadcrumbs">Home / Reviews</div>
     <span class="eyebrow">Guest reviews</span>
     <h1>Real reviews from locals, families, and visitors.</h1>
     <p>Guests across Google, Yelp, and Facebook praise Victor’s Mexican Food for fresh flavor, friendly service, generous plates, and a clean, welcoming Palm Desert restaurant.</p>
   </div>
 </section>
-<section class="section white reviews-directory-section divider divider-right divider-soft">
+<section class="section white reviews-directory-section">
   <div class="container">
     <div class="section-top" data-reveal>
       <div><span class="eyebrow">Social proof</span><h2 class="section-title">Why guests keep coming back.</h2></div>

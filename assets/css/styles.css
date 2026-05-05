@@ -2537,13 +2537,6 @@ button[disabled] {
 
 
 /* Inner Page Refresh */
-body:not(.home-page) .site-header {
-  background: rgba(251,246,239,.94);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(29,20,15,.08);
-  box-shadow: 0 16px 40px rgba(29,20,15,.10);
-}
-
 body:not(.home-page) .top-strip {
   max-height: 0;
   opacity: 0;
@@ -2850,5 +2843,131 @@ body:not(.home-page) .brand-copy span {
 
   .legal-card {
     border-radius: 24px;
+  }
+}
+
+
+/* Inner page video heroes */
+.video-hero-page:not(.scrolled) .brand-logo-light {
+  opacity: 1;
+}
+
+.video-hero-page:not(.scrolled) .brand-logo-dark {
+  opacity: 0;
+}
+
+.video-hero-page:not(.scrolled) .brand-copy strong,
+.video-hero-page:not(.scrolled) .nav-links a,
+.video-hero-page:not(.scrolled) .lang-switch {
+  color: #fff;
+}
+
+.video-hero-page:not(.scrolled) .brand-copy span {
+  color: rgba(255,255,255,.78);
+}
+
+.video-hero-page.scrolled .top-strip {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-100%);
+}
+
+.video-page-hero {
+  min-height: 78svh;
+  padding: 11rem 0 clamp(4.75rem, 8vw, 7rem);
+  display: grid;
+  align-items: end;
+  background: #2f2219;
+  isolation: isolate;
+}
+
+.video-page-hero.about-page-hero {
+  min-height: 88svh;
+}
+
+.video-page-hero.menu-page-hero,
+.video-page-hero.reviews-page-hero {
+  min-height: 78svh;
+}
+
+.inner-hero-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-page-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(0deg, rgba(29,20,15,.78), rgba(29,20,15,.44) 46%, rgba(29,20,15,.18)),
+    linear-gradient(90deg, rgba(29,20,15,.62), rgba(29,20,15,.12) 56%, rgba(29,20,15,.34));
+}
+
+.video-page-hero::after {
+  z-index: 2;
+  height: 10rem;
+  background: linear-gradient(0deg, rgba(29,20,15,.58), transparent);
+}
+
+.video-page-hero .inner-hero-content {
+  position: relative;
+  z-index: 3;
+  max-width: 940px;
+}
+
+.video-page-hero h1 {
+  max-width: 11ch;
+  font-size: clamp(3rem, 7vw, 6.7rem);
+}
+
+.video-page-hero.menu-page-hero h1,
+.video-page-hero.reviews-page-hero h1 {
+  max-width: 14ch;
+}
+
+.video-page-hero p {
+  max-width: 66ch;
+  color: rgba(255,255,255,.9);
+}
+
+@media (max-width: 980px) {
+  .video-page-hero,
+  .video-page-hero.menu-page-hero,
+  .video-page-hero.reviews-page-hero {
+    min-height: 70svh;
+    padding: 9rem 0 4.25rem;
+  }
+
+  .video-page-hero.about-page-hero {
+    min-height: 78svh;
+  }
+
+  .video-page-hero h1 {
+    max-width: 12ch;
+    font-size: clamp(2.5rem, 10vw, 5rem);
+  }
+}
+
+@media (max-width: 720px) {
+  .video-page-hero,
+  .video-page-hero.menu-page-hero,
+  .video-page-hero.reviews-page-hero {
+    min-height: 66svh;
+    padding: 8.5rem 0 3.5rem;
+  }
+
+  .video-page-hero.about-page-hero {
+    min-height: 74svh;
+  }
+
+  .video-page-hero h1 {
+    font-size: clamp(2.1rem, 12vw, 4rem);
   }
 }
