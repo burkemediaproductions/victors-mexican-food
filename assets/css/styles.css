@@ -881,6 +881,13 @@ body.menu-open .site-header .header-actions > a {
   margin-top: 1rem;
 }
 
+
+@media (max-width: 1256px) {
+.menu-items-grid {
+      grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 980px) {
   .menu-layout {
     grid-template-columns: 1fr;
@@ -1537,6 +1544,11 @@ button[disabled] {
     padding: .75rem .9rem;
     margin-bottom: .75rem;
     text-align: left;
+  }
+
+@media (max-width: 709px) {
+  .order-shell.menu-app .menu-category-tabs {
+    top: calc(5.5rem + env(safe-area-inset-top))
   }
 
   .menu-mobile-category-toggle span,
