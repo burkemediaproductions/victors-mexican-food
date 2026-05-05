@@ -229,7 +229,7 @@ body.menu-open .menu-toggle span:nth-child(3) {
 }
 body.menu-open .site-header {
   z-index: 400;
-  background: transparent;
+  background: none !important;
   backdrop-filter: none;
   border-bottom-color: transparent;
   box-shadow: none;
