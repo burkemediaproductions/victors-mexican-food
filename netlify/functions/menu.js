@@ -161,283 +161,23 @@ function normalizeMenu({ categories, items, modifierGroups }) {
 }
 
 
-
 function getOrderingAvailability() {
-  const manualToggle = parseBooleanEnv(
+  const explicit = parseBooleanEnv(
     process.env.CLOVER_ONLINE_ORDERING_ENABLED ??
       process.env.ORDERING_ENABLED ??
       process.env.ONLINE_ORDERING_ENABLED
   );
 
-  const daysRaw =
-    process.env.ONLINE_ORDERING_DAYS ??
-    process.env.ONLINE_ORDERING_DAY ??
-    process.env.CLOVER_ONLINE_ORDERING_DAYS ??
-    process.env.CLOVER_ONLINE_ORDERING_DAY ??
-    '';
-
-  const timeRaw =
-    process.env.ONLINE_ORDERING_TIME ??
-    process.env.ONLINE_ORDERING_HOURS ??
-    process.env.CLOVER_ONLINE_ORDERING_TIME ??
-    process.env.CLOVER_ONLINE_ORDERING_HOURS ??
-    '';
-
-  const timezone =
-    process.env.ONLINE_ORDERING_TIMEZONE ||
-    process.env.ORDERING_TIMEZONE ||
-    process.env.BUSINESS_TIMEZONE ||
-    'America/Los_Angeles';
-
-  const schedule = getOrderingScheduleStatus({ daysRaw, timeRaw, timezone });
-
-  let orderingAvailable;
-  let orderingSource;
-  let closedReason = '';
-
-  if (manualToggle === false) {
-    orderingAvailable = false;
-    orderingSource = 'manual-off';
-    closedReason = 'manual';
-  } else if (schedule.hasSchedule) {
-    orderingAvailable = schedule.available;
-    orderingSource = 'schedule';
-    closedReason = schedule.reason || '';
-  } else {
-    orderingAvailable = manualToggle === null ? true : manualToggle;
-    orderingSource = manualToggle === null ? 'default' : 'manual-on';
-  }
+  const orderingAvailable = explicit === null ? true : explicit;
 
   return {
     orderingAvailable,
-    orderingSource,
+    orderingSource: explicit === null ? 'default' : 'environment',
     orderingMessage: orderingAvailable
       ? ''
-      : getOrderingClosedMessage(schedule, closedReason),
-    orderingSchedule: {
-      enabledDays: schedule.enabledDays,
-      timeRange: schedule.timeRangeLabel,
-      timezone,
-      currentDay: schedule.currentDay,
-      currentTime: schedule.currentTimeLabel,
-      reason: closedReason
-    }
+      : process.env.CLOVER_ORDERING_DISABLED_MESSAGE ||
+        'Online ordering is currently unavailable. You can still browse the menu, then call us to order.'
   };
-}
-
-function getOrderingScheduleStatus({ daysRaw, timeRaw, timezone }) {
-  const enabledDays = parseOrderingDays(daysRaw);
-  const timeRange = parseOrderingTimeRange(timeRaw);
-  const businessNow = getBusinessDateParts(timezone);
-
-  const hasDaySchedule = enabledDays.length > 0;
-  const hasTimeSchedule = Boolean(timeRange);
-  const hasSchedule = hasDaySchedule || hasTimeSchedule;
-
-  const dayAllowed = !hasDaySchedule || enabledDays.includes(businessNow.weekdayKey);
-  const timeAllowed = !hasTimeSchedule || isMinuteInRange(
-    businessNow.minutesSinceMidnight,
-    timeRange.startMinutes,
-    timeRange.endMinutes
-  );
-
-  let reason = '';
-  if (!dayAllowed) reason = 'day';
-  else if (!timeAllowed) reason = 'time';
-
-  return {
-    hasSchedule,
-    available: dayAllowed && timeAllowed,
-    reason,
-    enabledDays,
-    timeRangeLabel: timeRange ? timeRange.label : '',
-    currentDay: businessNow.weekdayName,
-    currentTimeLabel: businessNow.timeLabel
-  };
-}
-
-function parseOrderingDays(value) {
-  if (!value) return [];
-
-  const aliases = {
-    sunday: 'sunday',
-    sun: 'sunday',
-    monday: 'monday',
-    mon: 'monday',
-    tuesday: 'tuesday',
-    tue: 'tuesday',
-    tues: 'tuesday',
-    wednesday: 'wednesday',
-    wed: 'wednesday',
-    weds: 'wednesday',
-    thursday: 'thursday',
-    thu: 'thursday',
-    thur: 'thursday',
-    thurs: 'thursday',
-    friday: 'friday',
-    fri: 'friday',
-    saturday: 'saturday',
-    sat: 'saturday'
-  };
-
-  const normalized = String(value).trim().toLowerCase();
-
-  if (['all', 'daily', 'everyday', 'every day', '7 days', 'seven days'].includes(normalized)) {
-    return ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  }
-
-  if (['weekdays', 'weekday', 'monday-friday', 'mon-fri', 'monday through friday'].includes(normalized)) {
-    return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-  }
-
-  if (['weekends', 'weekend', 'saturday-sunday', 'sat-sun'].includes(normalized)) {
-    return ['saturday', 'sunday'];
-  }
-
-  return String(value)
-    .split(',')
-    .map((part) => part.trim().toLowerCase())
-    .map((part) => aliases[part] || '')
-    .filter(Boolean)
-    .filter((day, index, days) => days.indexOf(day) === index);
-}
-
-function parseOrderingTimeRange(value) {
-  if (!value) return null;
-
-  const parts = String(value)
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  if (parts.length < 2) return null;
-
-  const startMinutes = parseTimeToMinutes(parts[0]);
-  const endMinutes = parseTimeToMinutes(parts[1]);
-
-  if (startMinutes === null || endMinutes === null || startMinutes === endMinutes) return null;
-
-  return {
-    startMinutes,
-    endMinutes,
-    label: `${formatMinutesAsTime(startMinutes)}-${formatMinutesAsTime(endMinutes)}`
-  };
-}
-
-function parseTimeToMinutes(value) {
-  const input = String(value || '').trim().toLowerCase().replace(/\s+/g, '');
-  const match = input.match(/^(\d{1,2})(?::(\d{2}))?(a|am|p|pm)?$/);
-
-  if (!match) return null;
-
-  let hour = Number(match[1]);
-  const minute = match[2] ? Number(match[2]) : 0;
-  const meridiem = match[3] || '';
-
-  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
-  if (minute < 0 || minute > 59) return null;
-
-  if (meridiem) {
-    if (hour < 1 || hour > 12) return null;
-    if (meridiem.startsWith('a')) {
-      if (hour === 12) hour = 0;
-    } else if (meridiem.startsWith('p')) {
-      if (hour !== 12) hour += 12;
-    }
-  } else if (hour < 0 || hour > 23) {
-    return null;
-  }
-
-  return hour * 60 + minute;
-}
-
-function isMinuteInRange(currentMinutes, startMinutes, endMinutes) {
-  if (startMinutes < endMinutes) {
-    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
-  }
-
-  // Supports overnight windows like 8pm,2am.
-  return currentMinutes >= startMinutes || currentMinutes < endMinutes;
-}
-
-function getBusinessDateParts(timezone) {
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      weekday: 'long',
-      hour: 'numeric',
-      minute: '2-digit',
-      hourCycle: 'h23'
-    }).formatToParts(new Date());
-
-    const weekdayName = parts.find((part) => part.type === 'weekday')?.value || '';
-    const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0);
-    const minute = Number(parts.find((part) => part.type === 'minute')?.value || 0);
-    const minutesSinceMidnight = hour * 60 + minute;
-
-    return {
-      weekdayName,
-      weekdayKey: weekdayName.toLowerCase(),
-      minutesSinceMidnight,
-      timeLabel: formatMinutesAsTime(minutesSinceMidnight)
-    };
-  } catch (error) {
-    const now = new Date();
-    const weekdayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()];
-    const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
-
-    return {
-      weekdayName,
-      weekdayKey: weekdayName.toLowerCase(),
-      minutesSinceMidnight,
-      timeLabel: formatMinutesAsTime(minutesSinceMidnight)
-    };
-  }
-}
-
-function formatMinutesAsTime(totalMinutes) {
-  const hour24 = Math.floor(totalMinutes / 60) % 24;
-  const minute = totalMinutes % 60;
-  const suffix = hour24 >= 12 ? 'PM' : 'AM';
-  const hour12 = hour24 % 12 || 12;
-  const minuteText = minute ? `:${String(minute).padStart(2, '0')}` : '';
-
-  return `${hour12}${minuteText} ${suffix}`;
-}
-
-function getOrderingClosedMessage(schedule, reason) {
-  const customMessage = process.env.CLOVER_ORDERING_DISABLED_MESSAGE || process.env.ONLINE_ORDERING_DISABLED_MESSAGE;
-  if (customMessage) return customMessage;
-
-  if (reason === 'manual') {
-    return 'Online ordering is currently unavailable. You can still browse the menu, then call us to order.';
-  }
-
-  const scheduleParts = [];
-
-  if (schedule.enabledDays.length) {
-    scheduleParts.push(formatDayList(schedule.enabledDays));
-  }
-
-  if (schedule.timeRangeLabel) {
-    scheduleParts.push(schedule.timeRangeLabel);
-  }
-
-  if (scheduleParts.length) {
-    return `Online ordering is available ${scheduleParts.join(' from ')}. You can still browse the menu, then call us to order.`;
-  }
-
-  return 'Online ordering is currently unavailable. You can still browse the menu, then call us to order.';
-}
-
-function formatDayList(days) {
-  const labels = days.map((day) => day.charAt(0).toUpperCase() + day.slice(1));
-
-  if (labels.length === 7) return 'daily';
-  if (labels.length === 1) return labels[0];
-  if (labels.length === 2) return labels.join(' and ');
-
-  return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
 }
 
 function parseBooleanEnv(value) {
@@ -462,7 +202,7 @@ function json(statusCode, body) {
     statusCode,
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'no-store, max-age=0',
+      'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
       'Access-Control-Allow-Origin': '*'
     },
     body: JSON.stringify(body)

@@ -44,6 +44,11 @@ let orderingStatusMessage = '';
 let breakfastWindowActive = isBreakfastWindowActive();
 let navMode = getNavMode();
 let cloverPayment = null;
+let mobileCategoriesCollapsed = false;
+let mobileCartDock = null;
+let mobileCartDockOpen = false;
+let cartToast = null;
+let cartToastTimer = null;
 
 const navModeMedia = window.matchMedia(MOBILE_NAV_QUERY);
 
@@ -264,6 +269,22 @@ function renderCategories() {
     <strong>Menu Categories</strong>
   `;
 
+  if (navMode === 'mobile' && mobileCategoriesCollapsed) {
+    nav.classList.add('is-collapsed');
+  }
+
+  const activeCategoryName = menuData.categories[activeCategoryIndex]?.name || 'Menu Categories';
+  const mobileCollapseToggle = document.createElement('button');
+  mobileCollapseToggle.className = 'menu-mobile-category-toggle';
+  mobileCollapseToggle.type = 'button';
+  mobileCollapseToggle.setAttribute('data-mobile-category-toggle', '');
+  mobileCollapseToggle.setAttribute('aria-expanded', mobileCategoriesCollapsed ? 'false' : 'true');
+  mobileCollapseToggle.innerHTML = `
+    <span>${mobileCategoriesCollapsed ? 'Show Categories' : 'Hide Categories'}</span>
+    <strong>${escapeHtml(activeCategoryName)}</strong>
+    <em aria-hidden="true">${mobileCategoriesCollapsed ? 'v' : '^'}</em>
+  `;
+
   const searchLabel = document.createElement('label');
   searchLabel.className = 'menu-search-label';
   searchLabel.innerHTML = `
@@ -338,7 +359,7 @@ function renderCategories() {
     moreWrap.appendChild(morePanel);
   }
 
-  nav.append(header, searchLabel);
+  nav.append(header, mobileCollapseToggle, searchLabel);
   nav.append(quickLabel, featuredBar);
   if (moreToggle) nav.appendChild(moreToggle);
   if (moreWrap) nav.appendChild(moreWrap);
@@ -356,6 +377,12 @@ function renderCategories() {
     }
 
     updateCategoryActiveStates();
+  });
+
+  categoryContainer.querySelector('[data-mobile-category-toggle]')?.addEventListener('click', () => {
+    mobileCategoriesCollapsed = !mobileCategoriesCollapsed;
+    toggleMoreCategories(false);
+    renderCategories();
   });
 
   const moreToggleButton = categoryContainer.querySelector('[data-menu-more-toggle]');
@@ -552,6 +579,7 @@ function addToCart(item) {
   }
 
   renderCart();
+  showCartToast(`${item.name} added to cart`);
 }
 
 function updateQuantity(itemId, quantity) {
@@ -583,6 +611,7 @@ function renderCart() {
       <p class="cart-empty">${escapeHtml(orderingStatusMessage)}</p>
       <p class="cart-empty cart-empty-secondary">Need help? Call <a href="tel:+17603413553">(760) 341-3553</a>.</p>
     `;
+    renderMobileCartDock();
     return;
   }
 
@@ -591,6 +620,7 @@ function renderCart() {
       <h3>Your Order</h3>
       <p class="cart-empty">Your cart is empty. Add an item to get started.</p>
     `;
+    renderMobileCartDock();
     return;
   }
 
@@ -651,7 +681,133 @@ function renderCart() {
 
   cartPanel.querySelector('[data-checkout]')?.addEventListener('click', () => {
     renderCheckout();
+    scrollCartPanelIntoView();
   });
+
+  renderMobileCartDock();
+}
+
+function getCartItemCount() {
+  return cart.reduce((total, item) => total + (Number(item.quantity) || 0), 0);
+}
+
+function ensureMobileCartDock() {
+  if (mobileCartDock) return mobileCartDock;
+
+  mobileCartDock = document.createElement('div');
+  mobileCartDock.className = 'mobile-cart-dock';
+  mobileCartDock.setAttribute('data-mobile-cart-dock', '');
+  mobileCartDock.hidden = true;
+  document.body.appendChild(mobileCartDock);
+
+  return mobileCartDock;
+}
+
+function renderMobileCartDock() {
+  const dock = ensureMobileCartDock();
+  const showDock = orderingAvailable && cart.length > 0 && getNavMode() === 'mobile';
+
+  document.body.classList.toggle('has-mobile-cart-dock', showDock);
+
+  if (!showDock) {
+    mobileCartDockOpen = false;
+    dock.hidden = true;
+    dock.innerHTML = '';
+    dock.classList.remove('is-open');
+    return;
+  }
+
+  const itemCount = getCartItemCount();
+  const subtotal = getCartSubtotal();
+  const itemLabel = `${itemCount} item${itemCount === 1 ? '' : 's'}`;
+
+  dock.hidden = false;
+  dock.classList.toggle('is-open', mobileCartDockOpen);
+
+  dock.innerHTML = `
+    ${mobileCartDockOpen ? `
+      <div class="mobile-cart-sheet" role="dialog" aria-label="Your order summary">
+        <div class="mobile-cart-sheet-header">
+          <div>
+            <span>Your Order</span>
+            <strong>${escapeHtml(itemLabel)} • ${formatMoney(subtotal)}</strong>
+          </div>
+          <button type="button" data-mobile-cart-close aria-label="Collapse cart summary">Close</button>
+        </div>
+        <div class="mobile-cart-sheet-items">
+          ${cart.map(item => `
+            <div class="mobile-cart-sheet-item">
+              <span>${escapeHtml(item.name)}</span>
+              <strong>${item.quantity} × ${formatMoney(item.price)}</strong>
+            </div>
+          `).join('')}
+        </div>
+        <div class="mobile-cart-sheet-actions">
+          <button class="button-outline" type="button" data-mobile-cart-view>View Full Cart</button>
+          <button class="button order-button" type="button" data-mobile-cart-checkout>Checkout</button>
+        </div>
+      </div>
+    ` : ''}
+    <button class="mobile-cart-bar" type="button" data-mobile-cart-toggle aria-expanded="${mobileCartDockOpen ? 'true' : 'false'}">
+      <span>
+        <strong>Your Order</strong>
+        <em>${escapeHtml(itemLabel)} • ${formatMoney(subtotal)}</em>
+      </span>
+      <b>${mobileCartDockOpen ? 'Hide' : 'View Cart'}</b>
+    </button>
+  `;
+
+  dock.querySelector('[data-mobile-cart-toggle]')?.addEventListener('click', () => {
+    mobileCartDockOpen = !mobileCartDockOpen;
+    renderMobileCartDock();
+  });
+
+  dock.querySelector('[data-mobile-cart-close]')?.addEventListener('click', () => {
+    mobileCartDockOpen = false;
+    renderMobileCartDock();
+  });
+
+  dock.querySelector('[data-mobile-cart-view]')?.addEventListener('click', () => {
+    mobileCartDockOpen = false;
+    renderMobileCartDock();
+    scrollCartPanelIntoView();
+  });
+
+  dock.querySelector('[data-mobile-cart-checkout]')?.addEventListener('click', () => {
+    mobileCartDockOpen = false;
+    renderCheckout();
+    renderMobileCartDock();
+    scrollCartPanelIntoView();
+  });
+}
+
+function ensureCartToast() {
+  if (cartToast) return cartToast;
+
+  cartToast = document.createElement('div');
+  cartToast.className = 'cart-toast';
+  cartToast.setAttribute('role', 'status');
+  cartToast.setAttribute('aria-live', 'polite');
+  document.body.appendChild(cartToast);
+
+  return cartToast;
+}
+
+function showCartToast(message) {
+  if (getNavMode() !== 'mobile') return;
+
+  const toast = ensureCartToast();
+  toast.textContent = message;
+  toast.classList.add('is-visible');
+
+  if (cartToastTimer) clearTimeout(cartToastTimer);
+  cartToastTimer = setTimeout(() => {
+    toast.classList.remove('is-visible');
+  }, 2200);
+}
+
+function scrollCartPanelIntoView() {
+  cartPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function formatMoney(cents) {
@@ -713,6 +869,8 @@ function renderCheckout() {
   `;
 
   cartPanel.querySelector('[data-back-to-cart]')?.addEventListener('click', renderCart);
+
+  renderMobileCartDock();
 
   cartPanel.querySelector('[data-checkout-form]')?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -816,6 +974,8 @@ function renderPayment(orderId, amount) {
     </form>
   `;
 
+  renderMobileCartDock();
+
   if (!window.Clover || !cfg.cloverPublicKey || !cfg.cloverMerchantId) {
     cartPanel.querySelector('[data-payment-status]').textContent =
       'Payment setup is missing Clover public configuration.';
@@ -901,6 +1061,7 @@ function renderPayment(orderId, amount) {
         <p>Thank you! Your order has been paid successfully.</p>
         <p><strong>Order ID:</strong> ${escapeHtml(orderId)}</p>
       `;
+      renderMobileCartDock();
     } catch (error) {
       status.textContent = error.message;
       button.disabled = false;
@@ -929,6 +1090,8 @@ function refreshTimeSensitiveMenu() {
   } else {
     renderItems(menuData.categories[activeCategoryIndex]);
   }
+
+  renderMobileCartDock();
 }
 
 document.addEventListener('click', event => {
