@@ -282,11 +282,7 @@ function renderCategories() {
   mobileCollapseToggle.innerHTML = `
     <span>${mobileCategoriesCollapsed ? 'Show Categories' : 'Hide Categories'}</span>
     <strong>${escapeHtml(activeCategoryName)}</strong>
-   mobileCollapseToggle.innerHTML = `
-        <span>${mobileCategoriesCollapsed ? 'Show Categories' : 'Hide Categories'}</span>
-        <strong>${escapeHtml(activeCategoryName)}</strong>
-        <em class="category-toggle-icon" aria-hidden="true"></em>
-      `; <em aria-hidden="true">${mobileCategoriesCollapsed ? 'v' : '^'}</em>
+    <em class="category-toggle-icon" aria-hidden="true"></em>
   `;
 
   const searchLabel = document.createElement('label');
