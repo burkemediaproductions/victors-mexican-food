@@ -136,7 +136,7 @@ function resolveOrderingStatusMessage(data) {
 
   return data?.orderingMessage ||
     cfg.orderingMessage ||
-    'Online ordering is currently unavailable. You can still browse the menu, then call us to order.';
+    'Online ordering is currently unavailable. You can still browse the menu, and return during our operating hours to order.';
 }
 
 function getBusinessHour(date = new Date()) {
@@ -271,8 +271,6 @@ function renderCategories() {
     <input class="menu-search-input" data-menu-search type="search" placeholder="Search menu..." autocomplete="off" value="${escapeHtml(searchTerm)}">
   `;
 
-  const status = createOrderingStatus();
-
   const quickLabel = document.createElement('div');
   quickLabel.className = 'menu-category-label';
   quickLabel.textContent = navMode === 'mobile' ? 'Quick picks' : 'Featured categories';
@@ -341,7 +339,6 @@ function renderCategories() {
   }
 
   nav.append(header, searchLabel);
-  if (status) nav.appendChild(status);
   nav.append(quickLabel, featuredBar);
   if (moreToggle) nav.appendChild(moreToggle);
   if (moreWrap) nav.appendChild(moreWrap);
@@ -374,19 +371,6 @@ function renderCategories() {
   categoryContainer.querySelector('[data-menu-more]')?.addEventListener('click', event => {
     if (event.target === event.currentTarget) toggleMoreCategories(false);
   });
-}
-
-function createOrderingStatus() {
-  if (orderingAvailable) return null;
-
-  const status = document.createElement('div');
-  status.className = 'menu-ordering-status';
-  status.innerHTML = `
-    <strong>Online ordering is currently off.</strong>
-    <span>${escapeHtml(orderingStatusMessage)}</span>
-  `;
-
-  return status;
 }
 
 function createCategoryButton(category, index, extraClass = '') {
