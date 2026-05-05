@@ -536,23 +536,39 @@ function createEmptyMessage(message) {
 
 function createMenuItemCard(item, categoryName = '') {
   const card = document.createElement('article');
-  card.className = 'menu-item-card';
+  card.className = item.imageUrl ? 'menu-item-card has-image' : 'menu-item-card';
 
   const addControl = orderingAvailable
     ? `<button class="button order-button" type="button" data-add-item>Add</button>`
     : `<button class="button order-button menu-add-disabled" type="button" disabled aria-disabled="true">Browse Only</button>`;
 
+  const imageMarkup = item.imageUrl
+    ? `
+      <div class="menu-item-photo-wrap">
+        <img class="menu-item-photo" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}" loading="lazy" decoding="async">
+      </div>
+    `
+    : '';
+
   card.innerHTML = `
-    <div>
-      ${categoryName ? `<span class="menu-item-category">${escapeHtml(categoryName)}</span>` : ''}
-      <h3>${escapeHtml(item.name)}</h3>
-      ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ''}
-    </div>
-    <div class="menu-item-card-footer">
-      <strong>${escapeHtml(item.priceFormatted || formatMoney(item.price))}</strong>
-      ${addControl}
+    ${imageMarkup}
+    <div class="menu-item-card-body">
+      <div class="menu-item-card-copy">
+        ${categoryName ? `<span class="menu-item-category">${escapeHtml(categoryName)}</span>` : ''}
+        <h3>${escapeHtml(item.name)}</h3>
+        ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ''}
+      </div>
+      <div class="menu-item-card-footer">
+        <strong>${escapeHtml(item.priceFormatted || formatMoney(item.price))}</strong>
+        ${addControl}
+      </div>
     </div>
   `;
+
+  card.querySelector('.menu-item-photo')?.addEventListener('error', () => {
+    card.querySelector('.menu-item-photo-wrap')?.remove();
+    card.classList.remove('has-image');
+  }, { once: true });
 
   card.querySelector('[data-add-item]')?.addEventListener('click', () => addToCart(item));
   return card;
@@ -574,6 +590,7 @@ function addToCart(item) {
       name: item.name,
       price: item.price || 0,
       priceFormatted: item.priceFormatted,
+      imageUrl: item.imageUrl || '',
       quantity: 1
     });
   }

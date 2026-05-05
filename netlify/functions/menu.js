@@ -119,6 +119,8 @@ function normalizeMenu({ categories, items, modifierGroups }) {
           }))
         }));
 
+      const itemImage = getItemImage(item);
+
       return {
         id: item.id,
         name: item.name,
@@ -126,7 +128,9 @@ function normalizeMenu({ categories, items, modifierGroups }) {
         price: item.price || 0,
         priceFormatted: formatMoney(item.price || 0),
         categoryIds: itemCategoryIds,
-        modifierGroups: itemModifierGroups
+        modifierGroups: itemModifierGroups,
+        imageUrl: itemImage.url,
+        hasImage: itemImage.hasImage
       };
     });
 
@@ -160,6 +164,61 @@ function normalizeMenu({ categories, items, modifierGroups }) {
   };
 }
 
+
+
+function getItemImage(item) {
+  const directImageUrl = getDirectImageUrl(item);
+
+  if (directImageUrl) {
+    return {
+      hasImage: true,
+      url: directImageUrl
+    };
+  }
+
+  if (hasCloverItemImage(item)) {
+    return {
+      hasImage: true,
+      url: `/.netlify/functions/menu-image?itemId=${encodeURIComponent(item.id)}`
+    };
+  }
+
+  return {
+    hasImage: false,
+    url: ''
+  };
+}
+
+function getDirectImageUrl(item) {
+  const candidates = [
+    item.imageUrl,
+    item.imageURL,
+    item.image_url,
+    item.photoUrl,
+    item.photoURL,
+    item.photo_url,
+    item.pictureUrl,
+    item.pictureURL,
+    item.picture_url,
+    item.image?.url,
+    item.image?.href,
+    item.images?.elements?.[0]?.url,
+    item.images?.elements?.[0]?.href
+  ];
+
+  return candidates.find(value => typeof value === 'string' && /^https?:\/\//i.test(value.trim())) || '';
+}
+
+function hasCloverItemImage(item) {
+  return Boolean(
+    item.imageFilename ||
+      item.imageFileName ||
+      item.imageId ||
+      item.image?.id ||
+      item.images?.elements?.length ||
+      item.hasImage === true
+  );
+}
 
 function getOrderingAvailability() {
   const explicit = parseBooleanEnv(

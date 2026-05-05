@@ -1545,6 +1545,7 @@ button[disabled] {
     margin-bottom: .75rem;
     text-align: left;
   }
+}
 
 @media (max-width: 709px) {
   .order-shell.menu-app .menu-category-tabs {
@@ -1786,4 +1787,66 @@ button[disabled] {
 
 .cart-panel {
   scroll-margin-top: 8rem;
+}
+
+/* Clover item photos */
+.menu-item-card.has-image {
+  padding: 0;
+  overflow: hidden;
+  align-content: start;
+}
+
+.menu-item-card-body {
+  display: grid;
+  gap: 1rem;
+  padding: 1.2rem;
+  min-height: 100%;
+}
+
+.menu-item-card-copy {
+  min-width: 0;
+}
+
+.menu-item-photo-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(12,122,67,.08), rgba(210,168,87,.18)),
+    var(--cream-deep);
+}
+
+.menu-item-photo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transform: scale(1.001);
+}
+
+.menu-item-card.has-image .menu-item-card-footer {
+  margin-top: auto;
+}
+
+@media (min-width: 1181px) {
+  .menu-item-card.has-image {
+    grid-template-rows: auto 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .menu-item-photo-wrap {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+@media (max-width: 540px) {
+  .menu-item-card.has-image .menu-item-card-body {
+    padding: 1rem;
+  }
+
+  .menu-item-photo-wrap {
+    aspect-ratio: 4 / 3;
+  }
 }
