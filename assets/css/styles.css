@@ -2971,3 +2971,74 @@ body:not(.home-page) .brand-copy span {
     font-size: clamp(2.1rem, 12vw, 4rem);
   }
 }
+
+
+/* Solid header + shorter heroes for non-video inner pages */
+body.faq-page .site-header,
+body.contact-page .site-header,
+body.legal-page .site-header {
+  background:
+    linear-gradient(180deg, rgba(251,246,239,.98), rgba(242,228,207,.94));
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(29,20,15,.08);
+  box-shadow: 0 14px 34px rgba(29,20,15,.10);
+}
+
+body.faq-page .brand-logo-light,
+body.contact-page .brand-logo-light,
+body.legal-page .brand-logo-light {
+  opacity: 0;
+}
+
+body.faq-page .brand-logo-dark,
+body.contact-page .brand-logo-dark,
+body.legal-page .brand-logo-dark {
+  opacity: 1;
+}
+
+body.faq-page .brand-copy strong,
+body.faq-page .nav-links a,
+body.faq-page .lang-switch,
+body.contact-page .brand-copy strong,
+body.contact-page .nav-links a,
+body.contact-page .lang-switch,
+body.legal-page .brand-copy strong,
+body.legal-page .nav-links a,
+body.legal-page .lang-switch {
+  color: var(--ink);
+}
+
+body.faq-page .brand-copy span,
+body.contact-page .brand-copy span,
+body.legal-page .brand-copy span {
+  color: var(--muted);
+}
+
+body.faq-page .inner-page-hero,
+body.contact-page .inner-page-hero {
+  min-height: 42vh;
+  padding: 8.5rem 0 3.75rem;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(210,168,87,.22), transparent 28%),
+    radial-gradient(circle at 90% 8%, rgba(198,40,40,.10), transparent 24%),
+    linear-gradient(180deg, #3d2a1f 0%, #231813 100%);
+}
+
+body.legal-page .page-hero-plain {
+  padding: 7.8rem 0 2.75rem;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(210,168,87,.18), transparent 26%),
+    linear-gradient(180deg, #fbf6ef 0%, #f2e4cf 100%);
+}
+
+@media (max-width: 720px) {
+  body.faq-page .inner-page-hero,
+  body.contact-page .inner-page-hero {
+    min-height: 36vh;
+    padding: 7.4rem 0 2.8rem;
+  }
+
+  body.legal-page .page-hero-plain {
+    padding: 7rem 0 2.35rem;
+  }
+}
