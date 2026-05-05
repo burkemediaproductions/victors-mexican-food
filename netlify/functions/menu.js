@@ -3,6 +3,8 @@ const CLOVER_API_BASE =
     ? 'https://sandbox.dev.clover.com'
     : 'https://api.clover.com';
 
+const CLOVER_PAGE_LIMIT = 1000;
+
 exports.handler = async function () {
   try {
     const merchantId = process.env.CLOVER_MERCHANT_ID;
@@ -20,9 +22,15 @@ exports.handler = async function () {
     };
 
     const [categories, items, modifierGroups] = await Promise.all([
-      cloverFetch(`/v3/merchants/${merchantId}/categories`, headers),
-      cloverFetch(`/v3/merchants/${merchantId}/items?expand=categories,modifierGroups`, headers),
-      cloverFetch(`/v3/merchants/${merchantId}/modifier_groups?expand=modifiers`, headers)
+      cloverFetchAll(`/v3/merchants/${merchantId}/categories`, headers),
+      cloverFetchAll(
+        `/v3/merchants/${merchantId}/items?expand=categories,modifierGroups`,
+        headers
+      ),
+      cloverFetchAll(
+        `/v3/merchants/${merchantId}/modifier_groups?expand=modifiers`,
+        headers
+      )
     ]);
 
     const normalized = normalizeMenu({
@@ -51,6 +59,35 @@ async function cloverFetch(path, headers) {
   return response.json();
 }
 
+async function cloverFetchAll(path, headers, limit = CLOVER_PAGE_LIMIT) {
+  const elements = [];
+  let offset = 0;
+
+  while (true) {
+    const pagePath = addPaginationParams(path, offset, limit);
+    const page = await cloverFetch(pagePath, headers);
+    const pageElements = Array.isArray(page.elements) ? page.elements : [];
+
+    elements.push(...pageElements);
+
+    if (pageElements.length < limit) break;
+
+    offset += limit;
+  }
+
+  return { elements };
+}
+
+function addPaginationParams(path, offset, limit) {
+  const [basePath, queryString = ''] = path.split('?');
+  const params = new URLSearchParams(queryString);
+
+  params.set('offset', String(offset));
+  params.set('limit', String(limit));
+
+  return `${basePath}?${params.toString()}`;
+}
+
 function normalizeMenu({ categories, items, modifierGroups }) {
   const modifierGroupMap = new Map(
     modifierGroups.map((group) => [group.id, group])
@@ -59,7 +96,9 @@ function normalizeMenu({ categories, items, modifierGroups }) {
   const activeItems = items
     .filter((item) => !item.hidden && item.available !== false)
     .map((item) => {
-      const itemCategoryIds = (item.categories?.elements || []).map((cat) => cat.id);
+      const itemCategoryIds = (item.categories?.elements || []).map(
+        (cat) => cat.id
+      );
 
       const itemModifierGroups = (item.modifierGroups?.elements || [])
         .map((groupRef) => modifierGroupMap.get(groupRef.id) || groupRef)
@@ -90,7 +129,9 @@ function normalizeMenu({ categories, items, modifierGroups }) {
     id: category.id,
     name: category.name,
     sortOrder: category.sortOrder || 0,
-    items: activeItems.filter((item) => item.categoryIds.includes(category.id))
+    items: activeItems.filter((item) =>
+      item.categoryIds.includes(category.id)
+    )
   }));
 
   const uncategorizedItems = activeItems.filter(
