@@ -365,7 +365,7 @@ body.menu-open .site-header .header-actions > a {
 .section.soft { background: var(--cream-deep); }
 .section.dark { background: linear-gradient(180deg, #3d2a1f, #231813); color:#fff; z-index:9; }
 .section.olive { background: linear-gradient(180deg, var(--green), var(--green-deep)); color:#fff; }
-.section.red { background: linear-gradient(180deg, var(--red), var(--red-deep)); color:#fff; }
+.section.red { background: linear-gradient(180deg, var(--red), var(--red-deep)); color:#fff;}
 .section.divider::after { content:''; position:absolute; left:0; right:0; bottom:-2px; height:80px; z-index:5; }
 .section.divider-right::after {
   clip-path: polygon(91% 8%, 100% 18%, 100% 100%, 0 99%);
@@ -643,7 +643,6 @@ body.menu-open .site-header .header-actions > a {
 
 .heritage-video-section {
   position: relative;
-  overflow: hidden;
   isolation: isolate;
 }
 
