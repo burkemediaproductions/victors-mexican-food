@@ -319,8 +319,8 @@ function renderCategories() {
     moreText.textContent = activeIsInMore ? menuData.categories[activeCategoryIndex].name : 'More Categories';
 
     const moreIcon = document.createElement('span');
+    moreIcon.className = 'category-toggle-icon menu-more-toggle-icon';
     moreIcon.setAttribute('aria-hidden', 'true');
-    moreIcon.textContent = 'v';
 
     moreToggle.append(moreText, moreIcon);
 

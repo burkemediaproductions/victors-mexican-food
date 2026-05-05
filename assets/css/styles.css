@@ -1182,7 +1182,11 @@ body.menu-open .site-header .header-actions > a {
   margin-left: .25rem;
 }
 
-.menu-category-nav:not(.is-collapsed) .category-toggle-icon {
+.menu-category-nav:not(.is-collapsed) .menu-mobile-category-toggle .category-toggle-icon {
+  transform: rotate(-135deg);
+}
+
+.menu-more-toggle[aria-expanded="true"] .menu-more-toggle-icon {
   transform: rotate(-135deg);
 }
 
