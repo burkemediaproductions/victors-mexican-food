@@ -136,3 +136,130 @@ document.querySelectorAll('.nav-links a, .mobile-menu nav a').forEach((link) => 
     link.classList.add('is-active');
   }
 });
+
+// ===== REVIEWS CAROUSEL =====
+(() => {
+  const carousel = document.querySelector('[data-reviews-carousel]');
+  if (!carousel) return;
+
+  const viewport = carousel.querySelector('[data-reviews-viewport]');
+  const track = carousel.querySelector('.reviews-track');
+  const slides = Array.from(track.children);
+  const prevBtn = carousel.querySelector('[data-reviews-prev]');
+  const nextBtn = carousel.querySelector('[data-reviews-next]');
+  const dotsWrap = carousel.querySelector('[data-reviews-dots]');
+
+  let currentIndex = 0;
+  let slidesPerView = getSlidesPerView();
+  let totalPages = Math.ceil(slides.length / slidesPerView);
+  let autoplayInterval;
+
+  function getSlidesPerView() {
+    return window.innerWidth <= 980 ? 1 : 3;
+  }
+
+  function updateLayout() {
+    slidesPerView = getSlidesPerView();
+    totalPages = Math.ceil(slides.length / slidesPerView);
+    goToSlide(0, false);
+    buildDots();
+  }
+
+  function getSlideWidth() {
+    const slide = slides[0];
+    const style = window.getComputedStyle(track);
+    const gap = parseFloat(style.columnGap || style.gap || 0);
+    return slide.offsetWidth + gap;
+  }
+
+  function goToSlide(index, smooth = true) {
+    currentIndex = Math.max(0, Math.min(index, totalPages - 1));
+
+    const slideWidth = getSlideWidth();
+    const scrollX = slideWidth * slidesPerView * currentIndex;
+
+    viewport.scrollTo({
+      left: scrollX,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+
+    updateDots();
+  }
+
+  function next() {
+    if (currentIndex >= totalPages - 1) {
+      goToSlide(0);
+    } else {
+      goToSlide(currentIndex + 1);
+    }
+  }
+
+  function prev() {
+    if (currentIndex <= 0) {
+      goToSlide(totalPages - 1);
+    } else {
+      goToSlide(currentIndex - 1);
+    }
+  }
+
+  function buildDots() {
+    if (!dotsWrap) return;
+    dotsWrap.innerHTML = '';
+
+    for (let i = 0; i < totalPages; i++) {
+      const dot = document.createElement('button');
+      dot.className = 'reviews-dot';
+      dot.setAttribute('aria-label', `Go to review page ${i + 1}`);
+      dot.addEventListener('click', () => goToSlide(i));
+      dotsWrap.appendChild(dot);
+    }
+
+    updateDots();
+  }
+
+  function updateDots() {
+    if (!dotsWrap) return;
+    const dots = dotsWrap.querySelectorAll('.reviews-dot');
+
+    dots.forEach((dot, i) => {
+      dot.classList.toggle('is-active', i === currentIndex);
+    });
+  }
+
+  function startAutoplay() {
+    stopAutoplay();
+    autoplayInterval = setInterval(next, 5000);
+  }
+
+  function stopAutoplay() {
+    if (autoplayInterval) clearInterval(autoplayInterval);
+  }
+
+  // Events
+  nextBtn?.addEventListener('click', () => {
+    next();
+    stopAutoplay();
+  });
+
+  prevBtn?.addEventListener('click', () => {
+    prev();
+    stopAutoplay();
+  });
+
+  viewport.addEventListener('mouseenter', stopAutoplay);
+  viewport.addEventListener('mouseleave', startAutoplay);
+  viewport.addEventListener('focusin', stopAutoplay);
+  viewport.addEventListener('focusout', startAutoplay);
+
+  window.addEventListener('resize', () => {
+    updateLayout();
+  });
+
+  // Init
+  updateLayout();
+  startAutoplay();
+
+  // Randomize
+  currentIndex = Math.floor(Math.random() * totalPages);
+    goToSlide(currentIndex, false);
+})();
