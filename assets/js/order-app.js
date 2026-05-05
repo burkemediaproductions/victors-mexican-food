@@ -4,21 +4,48 @@ const categoryContainer = document.querySelector('[data-menu-categories]');
 const itemsContainer = document.querySelector('[data-menu-items]');
 const cartPanel = document.querySelector('[data-cart-panel]');
 
-let menuData = null;
-let cart = [];
-let activeCategoryIndex = 0;
-let searchTerm = '';
-let featuredCategoryIndexes = [];
+const BUSINESS_TIME_ZONE = 'America/Los_Angeles';
+const BREAKFAST_START_HOUR = 7;
+const BREAKFAST_END_HOUR = 11;
+const BREAKFAST_CATEGORY_NAMES = ['breakfast burritos', 'breakfast plates'];
 
-const FEATURED_CATEGORY_NAMES = [
-  'breakfast burritos',
-  'breakfast plates',
+const DESKTOP_PRIMARY_CATEGORY_NAMES = [
+  'burritos',
+  'soft tacos',
+  'combination plates',
+  'quesadillas',
+  'taco salad',
+  'tortas',
+  'nachos',
+  'carne asada fries',
+  'drinks',
+  'aguas frescas'
+];
+
+const MOBILE_QUICK_CATEGORY_NAMES = [
   'burritos',
   'soft tacos',
   'combination plates',
   'quesadillas',
   'drinks'
 ];
+
+const DESKTOP_MAX_PRIMARY_CATEGORIES = 10;
+const MOBILE_MAX_QUICK_CATEGORIES = 5;
+const MOBILE_NAV_QUERY = '(max-width: 980px)';
+
+let menuData = null;
+let cart = [];
+let activeCategoryIndex = -1;
+let searchTerm = '';
+let featuredCategoryIndexes = [];
+let orderingAvailable = true;
+let orderingStatusMessage = '';
+let breakfastWindowActive = isBreakfastWindowActive();
+let navMode = getNavMode();
+let cloverPayment = null;
+
+const navModeMedia = window.matchMedia(MOBILE_NAV_QUERY);
 
 async function loadMenu() {
   if (!categoryContainer || !itemsContainer) return;
@@ -27,10 +54,17 @@ async function loadMenu() {
     const res = await fetch(MENU_ENDPOINT);
     const data = await res.json();
 
+    if (!res.ok) {
+      throw new Error(data.message || data.error || 'Menu request failed');
+    }
+
     menuData = {
       ...data,
       categories: Array.isArray(data.categories) ? data.categories : []
     };
+
+    orderingAvailable = resolveOrderingAvailability(data);
+    orderingStatusMessage = resolveOrderingStatusMessage(data);
 
     if (!menuData.categories.length) {
       categoryContainer.innerHTML = '';
@@ -39,7 +73,7 @@ async function loadMenu() {
       return;
     }
 
-    activeCategoryIndex = 0;
+    activeCategoryIndex = getInitialCategoryIndex();
     searchTerm = '';
 
     renderCategories();
@@ -47,8 +81,14 @@ async function loadMenu() {
     renderCart();
   } catch (err) {
     console.error('Menu load failed', err);
+    categoryContainer.innerHTML = '';
     itemsContainer.innerHTML = '<p class="menu-empty">Menu is temporarily unavailable. Please try again soon.</p>';
+    renderCart();
   }
+}
+
+function getNavMode() {
+  return window.matchMedia(MOBILE_NAV_QUERY).matches ? 'mobile' : 'desktop';
 }
 
 function normalizeCategoryName(value) {
@@ -59,35 +99,156 @@ function normalizeCategoryName(value) {
     .trim();
 }
 
-function getFeaturedCategoryIndexes(categories) {
+function parseBoolean(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value !== 'string') return null;
+
+  const normalized = value.trim().toLowerCase();
+
+  if (['true', '1', 'yes', 'y', 'on', 'open', 'enabled'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'n', 'off', 'closed', 'disabled'].includes(normalized)) return false;
+
+  return null;
+}
+
+function resolveOrderingAvailability(data) {
+  const cfg = window.VICTORS_CONFIG || {};
+  const candidates = [
+    data?.orderingAvailable,
+    data?.onlineOrderingAvailable,
+    data?.orderingEnabled,
+    cfg.orderingAvailable,
+    cfg.onlineOrderingAvailable,
+    cfg.orderingEnabled
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = parseBoolean(candidate);
+    if (parsed !== null) return parsed;
+  }
+
+  return true;
+}
+
+function resolveOrderingStatusMessage(data) {
+  const cfg = window.VICTORS_CONFIG || {};
+
+  return data?.orderingMessage ||
+    cfg.orderingMessage ||
+    'Online ordering is currently unavailable. You can still browse the menu, then call us to order.';
+}
+
+function getBusinessHour(date = new Date()) {
+  try {
+    const hourPart = new Intl.DateTimeFormat('en-US', {
+      timeZone: BUSINESS_TIME_ZONE,
+      hour: 'numeric',
+      hourCycle: 'h23'
+    })
+      .formatToParts(date)
+      .find(part => part.type === 'hour');
+
+    const hour = Number(hourPart?.value);
+    return Number.isFinite(hour) ? hour : date.getHours();
+  } catch (error) {
+    return date.getHours();
+  }
+}
+
+function isBreakfastWindowActive(date = new Date()) {
+  const hour = getBusinessHour(date);
+  return hour >= BREAKFAST_START_HOUR && hour < BREAKFAST_END_HOUR;
+}
+
+function isBreakfastCategoryName(name) {
+  const normalized = normalizeCategoryName(name);
+  return BREAKFAST_CATEGORY_NAMES.some(breakfastName => normalized === normalizeCategoryName(breakfastName));
+}
+
+function getVisibleCategoryEntries() {
+  if (!menuData?.categories?.length) return [];
+
+  const breakfastOpen = isBreakfastWindowActive();
+
+  return menuData.categories
+    .map((category, index) => ({ category, index }))
+    .filter(({ category }) => breakfastOpen || !isBreakfastCategoryName(category.name));
+}
+
+function getFeaturedNameList() {
+  const primaryNames = navMode === 'mobile'
+    ? MOBILE_QUICK_CATEGORY_NAMES
+    : DESKTOP_PRIMARY_CATEGORY_NAMES;
+
+  return isBreakfastWindowActive()
+    ? [...BREAKFAST_CATEGORY_NAMES, ...primaryNames]
+    : [...primaryNames];
+}
+
+function getFeaturedLimit() {
+  return navMode === 'mobile'
+    ? MOBILE_MAX_QUICK_CATEGORIES
+    : DESKTOP_MAX_PRIMARY_CATEGORIES;
+}
+
+function getFeaturedCategoryIndexes(entries = getVisibleCategoryEntries()) {
   const selected = [];
-  const normalizedNames = categories.map(cat => normalizeCategoryName(cat.name));
+  const featuredNames = getFeaturedNameList();
+  const maxFeatured = getFeaturedLimit();
 
-  FEATURED_CATEGORY_NAMES.forEach(featuredName => {
+  featuredNames.forEach(featuredName => {
+    if (selected.length >= maxFeatured) return;
+
     const target = normalizeCategoryName(featuredName);
-    const exactIndex = normalizedNames.findIndex((name, index) => name === target && !selected.includes(index));
-    const includesIndex = normalizedNames.findIndex((name, index) => name.includes(target) && !selected.includes(index));
-    const index = exactIndex >= 0 ? exactIndex : includesIndex;
 
-    if (index >= 0) selected.push(index);
+    const exact = entries.find(({ category, index }) =>
+      normalizeCategoryName(category.name) === target && !selected.includes(index)
+    );
+
+    const partial = entries.find(({ category, index }) =>
+      normalizeCategoryName(category.name).includes(target) && !selected.includes(index)
+    );
+
+    const match = exact || partial;
+    if (match) selected.push(match.index);
   });
 
-  categories.forEach((cat, index) => {
-    if (selected.length >= 7) return;
+  entries.forEach(({ index }) => {
+    if (selected.length >= maxFeatured) return;
     if (!selected.includes(index)) selected.push(index);
   });
 
   return selected;
 }
 
+function getInitialCategoryIndex() {
+  const entries = getVisibleCategoryEntries();
+  const featured = getFeaturedCategoryIndexes(entries);
+  return featured[0] ?? entries[0]?.index ?? 0;
+}
+
+function ensureActiveCategoryIsVisible() {
+  const entries = getVisibleCategoryEntries();
+  const activeIsVisible = entries.some(({ index }) => index === activeCategoryIndex);
+
+  if (activeIsVisible) return;
+
+  const featured = getFeaturedCategoryIndexes(entries);
+  activeCategoryIndex = featured[0] ?? entries[0]?.index ?? 0;
+}
+
 function renderCategories() {
   if (!categoryContainer || !menuData?.categories?.length) return;
 
-  const categories = menuData.categories;
-  featuredCategoryIndexes = getFeaturedCategoryIndexes(categories);
-  const moreCategoryIndexes = categories
-    .map((_, index) => index)
-    .filter(index => !featuredCategoryIndexes.includes(index));
+  navMode = getNavMode();
+  ensureActiveCategoryIsVisible();
+
+  const entries = getVisibleCategoryEntries();
+  featuredCategoryIndexes = getFeaturedCategoryIndexes(entries);
+
+  const visibleCategoryIndexes = entries.map(({ index }) => index);
+  const moreCategoryIndexes = visibleCategoryIndexes.filter(index => !featuredCategoryIndexes.includes(index));
   const activeIsInMore = !searchTerm && moreCategoryIndexes.includes(activeCategoryIndex);
 
   categoryContainer.innerHTML = '';
@@ -99,7 +260,7 @@ function renderCategories() {
   const header = document.createElement('div');
   header.className = 'menu-category-header';
   header.innerHTML = `
-    <span class="menu-category-eyebrow">Order Online</span>
+    <span class="menu-category-eyebrow">${orderingAvailable ? 'Order Online' : 'Browse Menu'}</span>
     <strong>Menu Categories</strong>
   `;
 
@@ -110,22 +271,25 @@ function renderCategories() {
     <input class="menu-search-input" data-menu-search type="search" placeholder="Search menu..." autocomplete="off" value="${escapeHtml(searchTerm)}">
   `;
 
+  const status = createOrderingStatus();
+
   const quickLabel = document.createElement('div');
   quickLabel.className = 'menu-category-label';
-  quickLabel.textContent = 'Quick picks';
+  quickLabel.textContent = navMode === 'mobile' ? 'Quick picks' : 'Featured categories';
 
   const featuredBar = document.createElement('div');
   featuredBar.className = 'menu-category-bar';
   featuredBar.setAttribute('data-featured-categories', '');
 
   featuredCategoryIndexes.forEach(index => {
-    featuredBar.appendChild(createCategoryButton(categories[index], index));
+    featuredBar.appendChild(createCategoryButton(menuData.categories[index], index));
   });
 
+  let moreToggle = null;
   let moreWrap = null;
 
   if (moreCategoryIndexes.length) {
-    const moreToggle = document.createElement('button');
+    moreToggle = document.createElement('button');
     moreToggle.className = 'menu-more-toggle';
     moreToggle.type = 'button';
     moreToggle.setAttribute('data-menu-more-toggle', '');
@@ -133,7 +297,7 @@ function renderCategories() {
     moreToggle.setAttribute('aria-controls', 'menu-category-more-panel');
 
     const moreText = document.createElement('span');
-    moreText.textContent = activeIsInMore ? categories[activeCategoryIndex].name : 'More Categories';
+    moreText.textContent = activeIsInMore ? menuData.categories[activeCategoryIndex].name : 'More Categories';
 
     const moreIcon = document.createElement('span');
     moreIcon.setAttribute('aria-hidden', 'true');
@@ -143,7 +307,6 @@ function renderCategories() {
 
     if (activeIsInMore) moreToggle.classList.add('active');
 
-    featuredBar.appendChild(moreToggle);
 
     moreWrap = document.createElement('div');
     moreWrap.className = 'menu-category-more';
@@ -170,14 +333,17 @@ function renderCategories() {
     moreGrid.className = 'menu-more-grid';
 
     moreCategoryIndexes.forEach(index => {
-      moreGrid.appendChild(createCategoryButton(categories[index], index, 'menu-tab-more'));
+      moreGrid.appendChild(createCategoryButton(menuData.categories[index], index, 'menu-tab-more'));
     });
 
     morePanel.append(moreHeader, moreGrid);
     moreWrap.appendChild(morePanel);
   }
 
-  nav.append(header, searchLabel, quickLabel, featuredBar);
+  nav.append(header, searchLabel);
+  if (status) nav.appendChild(status);
+  nav.append(quickLabel, featuredBar);
+  if (moreToggle) nav.appendChild(moreToggle);
   if (moreWrap) nav.appendChild(moreWrap);
 
   categoryContainer.appendChild(nav);
@@ -195,8 +361,8 @@ function renderCategories() {
     updateCategoryActiveStates();
   });
 
-  const moreToggle = categoryContainer.querySelector('[data-menu-more-toggle]');
-  moreToggle?.addEventListener('click', () => {
+  const moreToggleButton = categoryContainer.querySelector('[data-menu-more-toggle]');
+  moreToggleButton?.addEventListener('click', () => {
     const more = categoryContainer.querySelector('[data-menu-more]');
     toggleMoreCategories(more?.hidden);
   });
@@ -208,6 +374,19 @@ function renderCategories() {
   categoryContainer.querySelector('[data-menu-more]')?.addEventListener('click', event => {
     if (event.target === event.currentTarget) toggleMoreCategories(false);
   });
+}
+
+function createOrderingStatus() {
+  if (orderingAvailable) return null;
+
+  const status = document.createElement('div');
+  status.className = 'menu-ordering-status';
+  status.innerHTML = `
+    <strong>Online ordering is currently off.</strong>
+    <span>${escapeHtml(orderingStatusMessage)}</span>
+  `;
+
+  return status;
 }
 
 function createCategoryButton(category, index, extraClass = '') {
@@ -228,11 +407,15 @@ function createCategoryButton(category, index, extraClass = '') {
 function setActiveCategory(index) {
   if (!menuData?.categories?.[index]) return;
 
+  const visible = getVisibleCategoryEntries().some(entry => entry.index === index);
+  if (!visible) return;
+
   activeCategoryIndex = index;
   searchTerm = '';
 
   renderCategories();
   renderItems(menuData.categories[activeCategoryIndex]);
+  toggleMoreCategories(false);
 }
 
 function toggleMoreCategories(open, returnFocus = false) {
@@ -265,9 +448,8 @@ function updateCategoryActiveStates() {
 
   const moreToggle = categoryContainer?.querySelector('[data-menu-more-toggle]');
   if (moreToggle) {
-    const moreIndexes = menuData.categories
-      .map((_, index) => index)
-      .filter(index => !featuredCategoryIndexes.includes(index));
+    const visibleCategoryIndexes = getVisibleCategoryEntries().map(({ index }) => index);
+    const moreIndexes = visibleCategoryIndexes.filter(index => !featuredCategoryIndexes.includes(index));
 
     moreToggle.classList.toggle('active', !hasSearch && moreIndexes.includes(activeCategoryIndex));
   }
@@ -276,10 +458,15 @@ function updateCategoryActiveStates() {
 function renderItems(category) {
   if (!itemsContainer || !category) return;
 
-  itemsContainer.innerHTML = '';
-  itemsContainer.appendChild(createResultsHeading('Menu Category', category.name));
+  ensureActiveCategoryIsVisible();
 
-  const items = Array.isArray(category.items) ? category.items : [];
+  const visible = getVisibleCategoryEntries().some(entry => entry.index === activeCategoryIndex);
+  const categoryToRender = visible ? menuData.categories[activeCategoryIndex] : category;
+
+  itemsContainer.innerHTML = '';
+  itemsContainer.appendChild(createResultsHeading('Menu Category', categoryToRender.name));
+
+  const items = Array.isArray(categoryToRender.items) ? categoryToRender.items : [];
 
   if (!items.length) {
     itemsContainer.appendChild(createEmptyMessage('No items are currently available in this category.'));
@@ -295,7 +482,7 @@ function renderSearchResults(term) {
   const normalizedTerm = term.toLowerCase();
   const matches = [];
 
-  menuData.categories.forEach(category => {
+  getVisibleCategoryEntries().forEach(({ category }) => {
     const items = Array.isArray(category.items) ? category.items : [];
 
     items.forEach(item => {
@@ -340,6 +527,10 @@ function createMenuItemCard(item, categoryName = '') {
   const card = document.createElement('article');
   card.className = 'menu-item-card';
 
+  const addControl = orderingAvailable
+    ? `<button class="button order-button" type="button" data-add-item>Add</button>`
+    : `<button class="button order-button menu-add-disabled" type="button" disabled aria-disabled="true">Browse Only</button>`;
+
   card.innerHTML = `
     <div>
       ${categoryName ? `<span class="menu-item-category">${escapeHtml(categoryName)}</span>` : ''}
@@ -348,17 +539,20 @@ function createMenuItemCard(item, categoryName = '') {
     </div>
     <div class="menu-item-card-footer">
       <strong>${escapeHtml(item.priceFormatted || formatMoney(item.price))}</strong>
-      <button class="button order-button" type="button" data-add-item>
-        Add
-      </button>
+      ${addControl}
     </div>
   `;
 
-  card.querySelector('[data-add-item]').addEventListener('click', () => addToCart(item));
+  card.querySelector('[data-add-item]')?.addEventListener('click', () => addToCart(item));
   return card;
 }
 
 function addToCart(item) {
+  if (!orderingAvailable) {
+    renderCart();
+    return;
+  }
+
   const existing = cart.find(cartItem => cartItem.id === item.id);
 
   if (existing) {
@@ -377,6 +571,8 @@ function addToCart(item) {
 }
 
 function updateQuantity(itemId, quantity) {
+  if (!orderingAvailable) return;
+
   cart = cart
     .map(item => item.id === itemId ? { ...item, quantity } : item)
     .filter(item => item.quantity > 0);
@@ -395,6 +591,16 @@ function getCartSubtotal() {
 
 function renderCart() {
   if (!cartPanel) return;
+
+  if (!orderingAvailable) {
+    cart = [];
+    cartPanel.innerHTML = `
+      <h3>Browse Menu</h3>
+      <p class="cart-empty">${escapeHtml(orderingStatusMessage)}</p>
+      <p class="cart-empty cart-empty-secondary">Need help? Call <a href="tel:+17603413553">(760) 341-3553</a>.</p>
+    `;
+    return;
+  }
 
   if (!cart.length) {
     cartPanel.innerHTML = `
@@ -479,6 +685,11 @@ function escapeHtml(value) {
 }
 
 function renderCheckout() {
+  if (!orderingAvailable) {
+    renderCart();
+    return;
+  }
+
   cartPanel.innerHTML = `
     <h3>Checkout</h3>
 
@@ -521,6 +732,11 @@ function renderCheckout() {
 
   cartPanel.querySelector('[data-checkout-form]')?.addEventListener('submit', async (event) => {
     event.preventDefault();
+
+    if (!orderingAvailable) {
+      renderCart();
+      return;
+    }
 
     const formData = new FormData(event.currentTarget);
 
@@ -565,13 +781,17 @@ function renderCheckout() {
       });
     } catch (error) {
       alert(error.message);
+      renderCart();
     }
   });
 }
 
-let cloverPayment = null;
-
 function renderPayment(orderId, amount) {
+  if (!orderingAvailable) {
+    renderCart();
+    return;
+  }
+
   const cfg = window.VICTORS_CONFIG || {};
 
   cartPanel.innerHTML = `
@@ -645,6 +865,11 @@ function renderPayment(orderId, amount) {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
+    if (!orderingAvailable) {
+      renderCart();
+      return;
+    }
+
     const button = form.querySelector('button[type="submit"]');
     button.disabled = true;
     button.textContent = 'Processing...';
@@ -700,6 +925,28 @@ function renderPayment(orderId, amount) {
   });
 }
 
+function refreshTimeSensitiveMenu() {
+  if (!menuData?.categories?.length) return;
+
+  const nextBreakfastState = isBreakfastWindowActive();
+  const nextNavMode = getNavMode();
+  const breakfastChanged = nextBreakfastState !== breakfastWindowActive;
+  const navModeChanged = nextNavMode !== navMode;
+
+  if (!breakfastChanged && !navModeChanged) return;
+
+  breakfastWindowActive = nextBreakfastState;
+  navMode = nextNavMode;
+  ensureActiveCategoryIsVisible();
+  renderCategories();
+
+  if (searchTerm) {
+    renderSearchResults(searchTerm);
+  } else {
+    renderItems(menuData.categories[activeCategoryIndex]);
+  }
+}
+
 document.addEventListener('click', event => {
   if (!categoryContainer || categoryContainer.contains(event.target)) return;
   toggleMoreCategories(false);
@@ -708,5 +955,13 @@ document.addEventListener('click', event => {
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape') toggleMoreCategories(false, true);
 });
+
+if (typeof navModeMedia.addEventListener === 'function') {
+  navModeMedia.addEventListener('change', refreshTimeSensitiveMenu);
+} else if (typeof navModeMedia.addListener === 'function') {
+  navModeMedia.addListener(refreshTimeSensitiveMenu);
+}
+
+setInterval(refreshTimeSensitiveMenu, 60000);
 
 loadMenu();
