@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -46,10 +46,9 @@
         "postalCode": "92260",
         "addressCountry": "US"
       },
-            "sameAs": [
+      "sameAs": [
         "https://www.facebook.com/victorsmexicanfood/",
         "https://www.instagram.com/victorsmexicanfood",
-        "https://www.google.com/maps/place/?q=place_id:ChIJuWx6KAD_2oARSCbOZE60VGc",
         "https://www.yelp.com/biz/victor-s-mexican-food-palm-desert-3"
       ],
       "openingHoursSpecification": [
@@ -401,81 +400,57 @@
 
 </main>
 <footer class="footer">
-  <div class="container footer-main">
-    <div class="footer-about">
-      <a class="footer-logo" href="/" aria-label="Victor's Mexican Food home">
-        <img src="/assets/img/logo-white.png" alt="Victor's Mexican Food" loading="lazy">
-      </a>
-      <div class="footer-brand"><strong>Victor's Mexican Food</strong><span>Fresh, authentic, family-rooted.</span></div>
-      <p>A family-owned Palm Desert restaurant inspired by Zacatecas heritage, scratch-made cooking, fresh ingredients, and warm hospitality.</p>
-      <div class="footer-socials" aria-label="Social links">
-        <a href="https://www.facebook.com/victorsmexicanfood/" target="_blank" rel="noopener">Facebook</a>
-        <a href="https://www.instagram.com/victorsmexicanfood/" target="_blank" rel="noopener">Instagram</a>
-        <a href="https://www.youtube.com/@VictorsMexicanFood" target="_blank" rel="noopener">YouTube</a>
-        <a href="https://www.google.com/maps/place/?q=place_id:ChIJuWx6KAD_2oARSCbOZE60VGc" target="_blank" rel="noopener">Google</a>
-        <a href="https://www.yelp.com/biz/victor-s-mexican-food-palm-desert-3" target="_blank" rel="noopener">Yelp</a>
-      </div>
-    </div>
-
-    <div class="footer-card footer-visit-card">
-      <h3>Visit Us</h3>
-      <p><a href="tel:+17603413553">(760) 341-3553</a></p>
-      <div class="footer-card-actions">
-        <a class="footer-link-button" href="https://www.google.com/maps/place/?q=place_id:ChIJuWx6KAD_2oARSCbOZE60VGc" target="_blank" rel="noopener">Get Directions</a>
-        <a class="footer-link-button" href="/contact/">Contact Us</a>
-      </div>
-      <div class="footer-mini-feature">
-      <span>Prime Location</span>
-      <p class="footer-card-note">
-        Located on CA-111 in Palm Desert, California near Deep Canyon Road, with dine-in, takeout, and online ordering available.
-      </p>
-       <p class="footer-card-note">
-        Dine-in at our casual, family friendly environment, or allow us to serve you online.  We love both our locals and visitors!
-      </p>
-      </div>
-    </div>
-
-    <div class="footer-card">
-      <h3>Explore</h3>
-      <nav class="footer-nav" aria-label="Footer navigation">
-        <a href="/">Home</a>
-        <a href="/about/">About</a>
-        <a href="/menu/">Menu</a>
-        <a href="/reviews/">Reviews</a>
-        <a href="/faq/">FAQ</a>
-        <a href="/contact/">Contact</a>
-        <a href="/visit/">Visit Us</a>
-      </nav>
-      <div class="footer-mini-feature">
-        <span>Try Our Popular Dishes!</span>
-        <strong>Breakfast burritos and plates, wet burritos, tacos, combination plates, and fresh salsas.</strong>
-      </div>
-
-    <a class="footer-link-button" href="/menu/#ordering">Order Online</a>
-    </div>
-
-    <div class="footer-card footer-hours-card">
-      <h3>Hours</h3>
-      <table class="hours-table footer-hours-table">
-        <tr><td>Monday</td><td>8:30 AM–8 PM</td></tr>
-        <tr><td>Tuesday</td><td>8:30 AM–8 PM</td></tr>
-        <tr><td>Wednesday</td><td>8:30 AM–8 PM</td></tr>
-        <tr><td>Thursday</td><td>8:30 AM–8 PM</td></tr>
-        <tr><td>Friday</td><td>8:30 AM–8 PM</td></tr>
-        <tr><td>Saturday</td><td>8:30 AM–8 PM</td></tr>
-        <tr><td>Sunday</td><td>Closed</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="container footer-bottom">
-    <small>© <span data-year></span> Victor's Mexican Food. All rights reserved.</small>
-    <div class="footer-legal-links">
-      <a href="/privacy-policy/">Privacy Policy</a>
-      <a href="/terms/">Terms of Service</a>
-      <a href="/es/">Español</a>
-    </div>
-  </div>
+<div class="container footer-main">
+<div class="footer-about">
+<a aria-label="Victor's Mexican Food home" class="footer-logo" href="/">
+<img alt="Victor's Mexican Food" loading="lazy" src="/assets/img/logo-white.png"/>
+</a>
+<div class="footer-brand"><strong>Victor's Mexican Food</strong><span>Fresh, authentic, family-rooted.</span></div>
+<p>A family-owned Palm Desert restaurant inspired by Zacatecas heritage, scratch-made cooking, fresh ingredients, and warm hospitality.</p>
+<div aria-label="Social links" class="footer-socials">
+<a href="https://www.facebook.com/victorsmexicanfood/" rel="noopener" target="_blank">Facebook</a>
+<a href="https://www.instagram.com/victorsmexicanfood/" rel="noopener" target="_blank">Instagram</a>
+<a href="https://www.yelp.com/biz/victor-s-mexican-food-palm-desert-3" rel="noopener" target="_blank">Yelp</a>
+</div>
+</div>
+<div class="footer-card footer-visit-card">
+<h3>Visit Us</h3>
+<p>74600 CA-111 Suite F<br/>Palm Desert, CA 92260</p>
+<p><a href="tel:+17603413553">(760) 341-3553</a></p>
+<a class="footer-link-button" href="https://www.google.com/maps/place/?q=place_id:ChIJuWx6KAD_2oARSCbOZE60VGc" rel="noopener" target="_blank">Get Directions</a>
+</div>
+<div class="footer-card">
+<h3>Explore</h3>
+<nav aria-label="Footer navigation" class="footer-nav">
+<a href="/">Home</a>
+<a href="/about/">About</a>
+<a href="/menu/">Menu</a>
+<a href="/reviews/">Reviews</a>
+<a href="/faq/">FAQ</a>
+<a href="/contact/">Contact</a>
+</nav>
+</div>
+<div class="footer-card footer-hours-card">
+<h3>Hours</h3>
+<table class="hours-table footer-hours-table">
+<tr><td>Monday</td><td>8:30 AM–8 PM</td></tr>
+<tr><td>Tuesday</td><td>8:30 AM–8 PM</td></tr>
+<tr><td>Wednesday</td><td>8:30 AM–8 PM</td></tr>
+<tr><td>Thursday</td><td>8:30 AM–8 PM</td></tr>
+<tr><td>Friday</td><td>8:30 AM–8 PM</td></tr>
+<tr><td>Saturday</td><td>8:30 AM–8 PM</td></tr>
+<tr><td>Sunday</td><td>Closed</td></tr>
+</table>
+</div>
+</div>
+<div class="container footer-bottom">
+<small>© <span data-year=""></span> Victor's Mexican Food. All rights reserved.</small>
+<div class="footer-legal-links">
+<a href="/privacy-policy/">Privacy Policy</a>
+<a href="/terms/">Terms of Service</a>
+<a href="/es/">Español</a>
+</div>
+</div>
 </footer>
 <script src="/assets/js/config.js"></script>
 <script src="/assets/js/site.js"></script>
@@ -483,6 +458,3 @@
 <script src="/assets/js/order-app.js"></script>
 </body>
 </html>
-
-
-

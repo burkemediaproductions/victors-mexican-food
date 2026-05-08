@@ -50,6 +50,7 @@
       "sameAs": [
         "https://www.facebook.com/victorsmexicanfood/",
         "https://www.instagram.com/victorsmexicanfood",
+        "https://www.google.com/maps/place/?q=place_id:ChIJuWx6KAD_2oARSCbOZE60VGc",
         "https://www.yelp.com/biz/victor-s-mexican-food-palm-desert-3"
       ],
       "openingHoursSpecification": [
@@ -465,6 +466,8 @@
       <div class="footer-socials" aria-label="Social links">
         <a href="https://www.facebook.com/victorsmexicanfood/" target="_blank" rel="noopener">Facebook</a>
         <a href="https://www.instagram.com/victorsmexicanfood/" target="_blank" rel="noopener">Instagram</a>
+        <a href="https://www.youtube.com/@VictorsMexicanFood" target="_blank" rel="noopener">YouTube</a>
+        <a href="https://www.google.com/maps/place/?q=place_id:ChIJuWx6KAD_2oARSCbOZE60VGc" target="_blank" rel="noopener">Google</a>
         <a href="https://www.yelp.com/biz/victor-s-mexican-food-palm-desert-3" target="_blank" rel="noopener">Yelp</a>
       </div>
     </div>

@@ -78,45 +78,55 @@
 })();
 
 
-const heroVideo = document.querySelector('.hero-media');
+const responsiveVideos = document.querySelectorAll('[data-video-desktop][data-video-mobile]');
 
-if (heroVideo) {
-  const heroMq = window.matchMedia('(max-width: 767px)');
-  let activeVideoSrc = '';
+if (responsiveVideos.length) {
+  const videoMq = window.matchMedia('(max-width: 767px)');
 
-  const setHeroVideoSource = () => {
-    const desktopSrc = heroVideo.dataset.videoDesktop || '';
-    const mobileSrc = heroVideo.dataset.videoMobile || '';
-    const nextSrc = heroMq.matches ? mobileSrc : desktopSrc;
+  const setResponsiveVideoSource = (video) => {
+    const desktopSrc = video.dataset.videoDesktop || '';
+    const mobileSrc = video.dataset.videoMobile || desktopSrc;
+    const desktopPoster = video.dataset.posterDesktop || video.getAttribute('poster') || '';
+    const mobilePoster = video.dataset.posterMobile || desktopPoster;
+
+    const nextSrc = videoMq.matches ? mobileSrc : desktopSrc;
+    const nextPoster = videoMq.matches ? mobilePoster : desktopPoster;
+    const activeVideoSrc = video.dataset.activeVideoSrc || '';
+
+    if (nextPoster && video.getAttribute('poster') !== nextPoster) {
+      video.setAttribute('poster', nextPoster);
+    }
 
     if (!nextSrc || nextSrc === activeVideoSrc) return;
 
-    const wasPlaying = !heroVideo.paused;
+    video.pause();
+    video.removeAttribute('src');
 
-    heroVideo.pause();
-    heroVideo.removeAttribute('src');
-    while (heroVideo.firstChild) {
-      heroVideo.removeChild(heroVideo.firstChild);
+    while (video.firstChild) {
+      video.removeChild(video.firstChild);
     }
-    heroVideo.load();
 
-    heroVideo.src = nextSrc;
-    heroVideo.load();
+    video.load();
+    video.src = nextSrc;
+    video.dataset.activeVideoSrc = nextSrc;
+    video.load();
 
-    const playPromise = heroVideo.play();
+    const playPromise = video.play();
     if (playPromise && typeof playPromise.catch === 'function') {
       playPromise.catch(() => {});
     }
-
-    activeVideoSrc = nextSrc;
   };
 
-  setHeroVideoSource();
+  const refreshResponsiveVideos = () => {
+    responsiveVideos.forEach(setResponsiveVideoSource);
+  };
 
-  if (typeof heroMq.addEventListener === 'function') {
-    heroMq.addEventListener('change', setHeroVideoSource);
-  } else if (typeof heroMq.addListener === 'function') {
-    heroMq.addListener(setHeroVideoSource);
+  refreshResponsiveVideos();
+
+  if (typeof videoMq.addEventListener === 'function') {
+    videoMq.addEventListener('change', refreshResponsiveVideos);
+  } else if (typeof videoMq.addListener === 'function') {
+    videoMq.addListener(refreshResponsiveVideos);
   }
 }
 
