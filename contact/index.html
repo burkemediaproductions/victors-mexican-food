@@ -91,6 +91,9 @@
     }
   ]
 }</script>
+<link rel="alternate" hreflang="en" href="https://victorsmexicanfood.com/contact/">
+<link rel="alternate" hreflang="es" href="https://victorsmexicanfood.com/es/contacto/">
+<link rel="alternate" hreflang="x-default" href="https://victorsmexicanfood.com/contact/">
 </head>
 <body class="inner-page contact-page">
 <a class="skip-link" href="#main-content">Skip to content</a>
@@ -106,8 +109,8 @@
 </a>
 <nav aria-label="Primary navigation" class="nav-links"><a href="/">Home</a><a href="/about/">About</a><a href="/menu/">Menu</a><a href="/reviews/">Reviews</a><a href="/faq/">FAQ</a><a href="/contact/" aria-current="page">Contact</a></nav>
 <div class="header-actions">
-<a class="lang-switch" href="/es/">Español</a>
-<a class="button order-button" data-order-link="" href="/menu/#ordering">Order</a>
+<a class="lang-switch" aria-label="Ver esta página en español" href="/es/contacto/" hreflang="es" lang="es">Español</a>
+<a class="button order-button" href="/menu/#ordering">Order</a>
 <button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="menu-toggle" data-menu-toggle="">
 <span></span>
 <span></span>
@@ -119,13 +122,17 @@
 <div class="mobile-menu" hidden="" id="mobile-menu">
 <div class="menu-content">
 <nav><a href="/">Home</a><a href="/about/">About</a><a href="/menu/">Menu</a><a href="/reviews/">Reviews</a><a href="/faq/">FAQ</a><a href="/contact/" aria-current="page">Contact</a></nav>
-<div class="mobile-cta"><a class="button order-button" data-order-link="" href="/menu/#ordering">Order Online</a><a class="button red-button" href="/visit/">Visit Us</a></div>
+<div class="mobile-language-switch" aria-label="Language options">
+  <a href="/es/contacto/" hreflang="es" lang="es">Ver en Español</a>
+</div>
+
+<div class="mobile-cta"><a class="button order-button" href="/menu/#ordering">Order Online</a><a class="button red-button" href="/visit/">Visit Us</a></div>
 </div>
 </div>
 <main id="main-content">
-<section class="page-hero inner-page-hero contact-page-hero" style="--page-hero-image: url('/assets/img/contact-hero.jpg');">
+<section class="page-hero inner-page-hero contact-page-hero" style="--page-hero-image: url('/assets/img/grain.png');">
   <div class="container">
-    <div class="breadcrumbs">Home / Contact</div>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><span aria-hidden="true">/</span><span aria-current="page">Contact</span></nav>
     <span class="eyebrow">Contact</span>
     <h1>Contact Victor’s Mexican Food.</h1>
     <p>Questions about visiting, ordering, or finding us in Palm Desert? Reach out or stop by today.</p>
@@ -172,7 +179,7 @@
       </div>
 
       <div class="location-actions">
-        <a class="button order-button" href="/menu/#ordering" data-order-link>Order Online</a>
+        <a class="button order-button" href="/menu/#ordering">Order Online</a>
         <a class="button-outline location-directions-button" href="https://www.google.com/maps/place/?q=place_id:ChIJuWx6KAD_2oARSCbOZE60VGc" target="_blank" rel="noopener">Get Directions</a>
       </div>
     </div>

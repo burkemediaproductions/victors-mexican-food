@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -91,6 +91,9 @@
     }
   ]
 }</script>
+<link rel="alternate" hreflang="en" href="https://victorsmexicanfood.com/menu/">
+<link rel="alternate" hreflang="es" href="https://victorsmexicanfood.com/es/menu/">
+<link rel="alternate" hreflang="x-default" href="https://victorsmexicanfood.com/menu/">
 </head>
 <body class="inner-page menu-page video-hero-page">
 <a class="skip-link" href="#main-content">Skip to content</a>
@@ -106,8 +109,8 @@
 </a>
 <nav aria-label="Primary navigation" class="nav-links"><a href="/">Home</a><a href="/about/">About</a><a href="/menu/">Menu</a><a href="/reviews/">Reviews</a><a href="/faq/">FAQ</a><a href="/contact/">Contact</a></nav>
 <div class="header-actions">
-<a class="lang-switch" href="/es/">Español</a>
-<a class="button order-button" data-order-link="" href="#ordering">Order</a>
+<a class="lang-switch" aria-label="Ver esta página en español" href="/es/menu/" hreflang="es" lang="es">Español</a>
+<a class="button order-button" href="#ordering">Order</a>
 <button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="menu-toggle" data-menu-toggle="">
 <span></span>
 <span></span>
@@ -119,7 +122,11 @@
 <div class="mobile-menu" hidden="" id="mobile-menu">
 <div class="menu-content">
 <nav><a href="/">Home</a><a href="/about/">About</a><a href="/menu/">Menu</a><a href="/reviews/">Reviews</a><a href="/faq/">FAQ</a><a href="/contact/">Contact</a></nav>
-<div class="mobile-cta"><a class="button order-button" data-order-link="" href="#ordering">Order Online</a><a class="button red-button" href="/visit/">Visit Us</a></div>
+<div class="mobile-language-switch" aria-label="Language options">
+  <a href="/es/menu/" hreflang="es" lang="es">Ver en Español</a>
+</div>
+
+<div class="mobile-cta"><a class="button order-button" href="#ordering">Order Online</a><a class="button red-button" href="/visit/">Visit Us</a></div>
 </div>
 </div>
 <main id="main-content">
@@ -139,7 +146,7 @@
     data-poster-mobile="/assets/video/FoodPan-vertical.png"
   ></video>
   <div class="container inner-hero-content">
-    <div class="breadcrumbs">Home / Menu</div>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><span aria-hidden="true">/</span><span aria-current="page">Menu</span></nav>
     <span class="eyebrow">Menu</span>
     <h1>Order Mexican food online in Palm Desert.</h1>
     <p>Browse tacos, burritos, breakfast favorites, combination plates, drinks, and house favorites from Victor’s Mexican Food.</p>
