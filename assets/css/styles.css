@@ -4121,3 +4121,211 @@ body.legal-page .page-hero-plain {
     font-size: .92rem;
   }
 }
+
+/* Clover Modifier Dialog */
+body.modifier-dialog-open {
+  overflow: hidden;
+}
+
+.modifier-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(29, 20, 15, .58);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .22s ease, visibility .22s ease;
+}
+
+.modifier-dialog[hidden] {
+  display: none;
+}
+
+.modifier-dialog.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modifier-dialog-card {
+  width: min(100%, 680px);
+  max-height: min(88svh, 760px);
+  overflow: auto;
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.92), rgba(251,246,239,.98)),
+    var(--cream);
+  box-shadow: 0 28px 90px rgba(0,0,0,.32);
+  border: 1px solid rgba(29,20,15,.1);
+  transform: translateY(14px) scale(.98);
+  transition: transform .22s ease;
+}
+
+.modifier-dialog.is-open .modifier-dialog-card {
+  transform: translateY(0) scale(1);
+}
+
+.modifier-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.4rem 1.4rem 1rem;
+  border-bottom: 1px solid rgba(29,20,15,.08);
+}
+
+.modifier-dialog-header h3 {
+  margin: .25rem 0 .35rem;
+  font-family: var(--heading);
+  font-size: clamp(1.65rem, 4vw, 2.35rem);
+  line-height: .95;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.modifier-dialog-header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.modifier-dialog-close {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--red), var(--red-deep));
+  color: #fff;
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modifier-form {
+  display: grid;
+  gap: 1rem;
+  padding: 1.2rem 1.4rem 1.4rem;
+}
+
+.modifier-group {
+  margin: 0;
+  padding: 1rem;
+  border: 1.5px solid rgba(29,20,15,.1);
+  border-radius: 22px;
+  background: rgba(255,255,255,.72);
+}
+
+.modifier-group legend {
+  display: grid;
+  gap: .15rem;
+  padding: 0 .35rem;
+}
+
+.modifier-group legend strong {
+  font-family: var(--heading);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  line-height: 1;
+  font-size: 1.2rem;
+}
+
+.modifier-group legend span,
+.modifier-option em {
+  color: var(--muted);
+  font-size: .88rem;
+  font-weight: 800;
+  font-style: normal;
+}
+
+.modifier-options {
+  display: grid;
+  gap: .6rem;
+  margin-top: .85rem;
+}
+
+.modifier-option {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  border: 1px solid rgba(29,20,15,.1);
+  border-radius: 16px;
+  background: #fff;
+  padding: .75rem .85rem;
+  cursor: pointer;
+}
+
+.modifier-option input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--green);
+  flex: 0 0 auto;
+}
+
+.modifier-option span {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+}
+
+.modifier-note-label {
+  display: grid;
+  gap: .45rem;
+  font-weight: 900;
+}
+
+.modifier-note-label textarea {
+  width: 100%;
+  border: 1.5px solid rgba(29,20,15,.14);
+  border-radius: 16px;
+  background: #fff;
+  padding: .85rem 1rem;
+}
+
+.modifier-error {
+  margin: 0;
+  color: var(--red);
+  font-weight: 900;
+}
+
+.modifier-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: .75rem;
+  padding-top: .25rem;
+}
+
+.cart-modifiers {
+  line-height: 1.35;
+}
+
+@media (max-width: 540px) {
+  .modifier-dialog {
+    align-items: end;
+    padding: .75rem;
+  }
+
+  .modifier-dialog-card {
+    width: 100%;
+    max-height: 86svh;
+    border-radius: 28px 28px 20px 20px;
+  }
+
+  .modifier-dialog-header,
+  .modifier-form {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .modifier-option span {
+    display: grid;
+    gap: .15rem;
+  }
+
+  .modifier-dialog-footer .button,
+  .modifier-dialog-footer .button-outline {
+    width: 100%;
+  }
+}

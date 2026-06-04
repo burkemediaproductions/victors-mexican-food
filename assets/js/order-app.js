@@ -49,6 +49,7 @@ let mobileCartDock = null;
 let mobileCartDockOpen = false;
 let cartToast = null;
 let cartToastTimer = null;
+let modifierDialog = null;
 
 const navModeMedia = window.matchMedia(MOBILE_NAV_QUERY);
 
@@ -538,8 +539,10 @@ function createMenuItemCard(item, categoryName = '') {
   const card = document.createElement('article');
   card.className = item.imageUrl ? 'menu-item-card has-image' : 'menu-item-card';
 
+  const hasModifiers = getItemModifierGroups(item).length > 0;
+
   const addControl = orderingAvailable
-    ? `<button class="button order-button" type="button" data-add-item>Add</button>`
+    ? `<button class="button order-button" type="button" data-add-item>${hasModifiers ? 'Customize' : 'Add'}</button>`
     : `<button class="button order-button menu-add-disabled" type="button" disabled aria-disabled="true">Browse Only</button>`;
 
   const imageMarkup = item.imageUrl
@@ -570,28 +573,239 @@ function createMenuItemCard(item, categoryName = '') {
     card.classList.remove('has-image');
   }, { once: true });
 
-  card.querySelector('[data-add-item]')?.addEventListener('click', () => addToCart(item));
+  card.querySelector('[data-add-item]')?.addEventListener('click', () => startAddToCart(item));
   return card;
 }
 
-function addToCart(item) {
+function getItemModifierGroups(item) {
+  return (Array.isArray(item.modifierGroups) ? item.modifierGroups : [])
+    .map(group => ({
+      ...group,
+      modifiers: Array.isArray(group.modifiers) ? group.modifiers.filter(modifier => modifier && modifier.id) : []
+    }))
+    .filter(group => group.modifiers.length);
+}
+
+function getModifierSummary(modifiers = []) {
+  return modifiers.map(modifier => modifier.name).filter(Boolean).join(', ');
+}
+
+function getCartLineKey(itemId, modifiers = [], note = '') {
+  const modifierKey = modifiers
+    .map(modifier => `${modifier.groupId || ''}:${modifier.id}`)
+    .sort()
+    .join('|');
+
+  return `${itemId}::${modifierKey}::${String(note || '').trim()}`;
+}
+
+function getCartItemUnitPrice(item) {
+  const modifierTotal = (Array.isArray(item.modifiers) ? item.modifiers : [])
+    .reduce((total, modifier) => total + Number(modifier.price || 0), 0);
+
+  return Number(item.price || 0) + modifierTotal;
+}
+
+function getCartItemDisplayName(item) {
+  const summary = getModifierSummary(item.modifiers);
+  return summary ? `${item.name} (${summary})` : item.name;
+}
+
+function startAddToCart(item) {
   if (!orderingAvailable) {
     renderCart();
     return;
   }
 
-  const existing = cart.find(cartItem => cartItem.id === item.id);
+  const modifierGroups = getItemModifierGroups(item);
+
+  if (!modifierGroups.length) {
+    addToCart(item);
+    return;
+  }
+
+  openModifierDialog(item, modifierGroups);
+}
+
+function ensureModifierDialog() {
+  if (modifierDialog) return modifierDialog;
+
+  modifierDialog = document.createElement('div');
+  modifierDialog.className = 'modifier-dialog';
+  modifierDialog.setAttribute('data-modifier-dialog', '');
+  modifierDialog.hidden = true;
+  document.body.appendChild(modifierDialog);
+
+  modifierDialog.addEventListener('click', event => {
+    if (event.target === modifierDialog) closeModifierDialog();
+  });
+
+  return modifierDialog;
+}
+
+function closeModifierDialog() {
+  if (!modifierDialog) return;
+
+  modifierDialog.hidden = true;
+  modifierDialog.classList.remove('is-open');
+  modifierDialog.innerHTML = '';
+  document.body.classList.remove('modifier-dialog-open');
+}
+
+function openModifierDialog(item, modifierGroups) {
+  const dialog = ensureModifierDialog();
+
+  dialog.innerHTML = `
+    <div class="modifier-dialog-card" role="dialog" aria-modal="true" aria-labelledby="modifier-dialog-title">
+      <div class="modifier-dialog-header">
+        <div>
+          <span class="menu-category-eyebrow">Customize Item</span>
+          <h3 id="modifier-dialog-title">${escapeHtml(item.name)}</h3>
+          <p>${escapeHtml(item.description || 'Choose the options for this item.')}</p>
+        </div>
+        <button class="modifier-dialog-close" type="button" data-modifier-close aria-label="Close item options">×</button>
+      </div>
+
+      <form class="modifier-form" data-modifier-form>
+        ${modifierGroups.map(group => createModifierGroupMarkup(group)).join('')}
+
+        <label class="modifier-note-label">
+          <span>Special Instructions</span>
+          <textarea name="itemNote" rows="2" placeholder="Optional note for this item"></textarea>
+        </label>
+
+        <p class="modifier-error" data-modifier-error hidden></p>
+
+        <div class="modifier-dialog-footer">
+          <button class="button-outline" type="button" data-modifier-cancel>Cancel</button>
+          <button class="button order-button" type="submit">Add to Order</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  dialog.hidden = false;
+  document.body.classList.add('modifier-dialog-open');
+  requestAnimationFrame(() => dialog.classList.add('is-open'));
+
+  dialog.querySelector('[data-modifier-close]')?.addEventListener('click', closeModifierDialog);
+  dialog.querySelector('[data-modifier-cancel]')?.addEventListener('click', closeModifierDialog);
+  dialog.querySelector('[data-modifier-form]')?.addEventListener('submit', event => {
+    event.preventDefault();
+
+    const selected = getSelectedModifiersFromForm(event.currentTarget, modifierGroups);
+    const errorNode = dialog.querySelector('[data-modifier-error]');
+
+    if (selected.error) {
+      errorNode.textContent = selected.error;
+      errorNode.hidden = false;
+      return;
+    }
+
+    addToCart(item, selected.modifiers, selected.note);
+    closeModifierDialog();
+  });
+
+  dialog.querySelector('input, textarea, button')?.focus({ preventScroll: true });
+}
+
+function createModifierGroupMarkup(group) {
+  const minRequired = Number(group.minRequired || 0);
+  const maxAllowed = group.maxAllowed === null || group.maxAllowed === undefined ? 0 : Number(group.maxAllowed || 0);
+  const isSingleChoice = maxAllowed === 1;
+  const inputType = isSingleChoice ? 'radio' : 'checkbox';
+  const requirement = minRequired > 0
+    ? `Choose at least ${minRequired}`
+    : 'Optional';
+  const maxText = maxAllowed > 1 ? ` • up to ${maxAllowed}` : '';
+
+  return `
+    <fieldset class="modifier-group" data-modifier-group="${escapeHtml(group.id)}" data-min="${escapeHtml(minRequired)}" data-max="${escapeHtml(maxAllowed)}">
+      <legend>
+        <strong>${escapeHtml(group.name || 'Options')}</strong>
+        <span>${escapeHtml(requirement + maxText)}</span>
+      </legend>
+      <div class="modifier-options">
+        ${group.modifiers.map(modifier => `
+          <label class="modifier-option">
+            <input
+              type="${inputType}"
+              name="modifier-${escapeHtml(group.id)}"
+              value="${escapeHtml(modifier.id)}"
+              data-group-id="${escapeHtml(group.id)}"
+            >
+            <span>
+              <strong>${escapeHtml(modifier.name)}</strong>
+              ${Number(modifier.price || 0) ? `<em>+${formatMoney(modifier.price)}</em>` : '<em>No charge</em>'}
+            </span>
+          </label>
+        `).join('')}
+      </div>
+    </fieldset>
+  `;
+}
+
+function getSelectedModifiersFromForm(form, modifierGroups) {
+  const selectedModifiers = [];
+
+  for (const group of modifierGroups) {
+    const checkedInputs = Array.from(form.querySelectorAll(`input[data-group-id="${cssEscape(group.id)}"]:checked`));
+    const minRequired = Number(group.minRequired || 0);
+    const maxAllowed = group.maxAllowed === null || group.maxAllowed === undefined ? 0 : Number(group.maxAllowed || 0);
+
+    if (checkedInputs.length < minRequired) {
+      return { error: `Please choose ${minRequired} option${minRequired === 1 ? '' : 's'} for ${group.name}.` };
+    }
+
+    if (maxAllowed > 0 && checkedInputs.length > maxAllowed) {
+      return { error: `Please choose no more than ${maxAllowed} option${maxAllowed === 1 ? '' : 's'} for ${group.name}.` };
+    }
+
+    checkedInputs.forEach(input => {
+      const modifier = group.modifiers.find(option => option.id === input.value);
+      if (!modifier) return;
+
+      selectedModifiers.push({
+        id: modifier.id,
+        name: modifier.name,
+        price: Number(modifier.price || 0),
+        groupId: group.id,
+        groupName: group.name || ''
+      });
+    });
+  }
+
+  return {
+    modifiers: selectedModifiers,
+    note: String(new FormData(form).get('itemNote') || '').trim(),
+    error: ''
+  };
+}
+
+function addToCart(item, modifiers = [], note = '') {
+  if (!orderingAvailable) {
+    renderCart();
+    return;
+  }
+
+  const normalizedModifiers = Array.isArray(modifiers) ? modifiers : [];
+  const normalizedNote = String(note || '').trim();
+  const lineId = getCartLineKey(item.id, normalizedModifiers, normalizedNote);
+  const existing = cart.find(cartItem => cartItem.lineId === lineId);
 
   if (existing) {
     existing.quantity += 1;
   } else {
     cart.push({
+      lineId,
       id: item.id,
       name: item.name,
-      price: item.price || 0,
+      price: Number(item.price || 0),
       priceFormatted: item.priceFormatted,
       imageUrl: item.imageUrl || '',
-      quantity: 1
+      quantity: 1,
+      modifiers: normalizedModifiers,
+      note: normalizedNote
     });
   }
 
@@ -599,23 +813,23 @@ function addToCart(item) {
   showCartToast(`${item.name} added to cart`);
 }
 
-function updateQuantity(itemId, quantity) {
+function updateQuantity(lineId, quantity) {
   if (!orderingAvailable) return;
 
   cart = cart
-    .map(item => item.id === itemId ? { ...item, quantity } : item)
+    .map(item => item.lineId === lineId ? { ...item, quantity } : item)
     .filter(item => item.quantity > 0);
 
   renderCart();
 }
 
-function removeFromCart(itemId) {
-  cart = cart.filter(item => item.id !== itemId);
+function removeFromCart(lineId) {
+  cart = cart.filter(item => item.lineId !== lineId);
   renderCart();
 }
 
 function getCartSubtotal() {
-  return cart.reduce((total, item) => total + item.price * item.quantity, 0);
+  return cart.reduce((total, item) => total + getCartItemUnitPrice(item) * item.quantity, 0);
 }
 
 function renderCart() {
@@ -649,20 +863,22 @@ function renderCart() {
         <div class="cart-item">
           <div>
             <strong>${escapeHtml(item.name)}</strong>
-            <span>${formatMoney(item.price)} each</span>
+            ${item.modifiers?.length ? `<span class="cart-modifiers">${escapeHtml(getModifierSummary(item.modifiers))}</span>` : ''}
+            ${item.note ? `<span class="cart-modifiers">Note: ${escapeHtml(item.note)}</span>` : ''}
+            <span>${formatMoney(getCartItemUnitPrice(item))} each</span>
           </div>
 
           <div class="cart-controls">
-            <button type="button" data-decrease="${escapeHtml(item.id)}" aria-label="Decrease ${escapeHtml(item.name)}">-</button>
+            <button type="button" data-decrease="${escapeHtml(item.lineId || item.id)}" aria-label="Decrease ${escapeHtml(getCartItemDisplayName(item))}">-</button>
             <span>${item.quantity}</span>
-            <button type="button" data-increase="${escapeHtml(item.id)}" aria-label="Increase ${escapeHtml(item.name)}">+</button>
+            <button type="button" data-increase="${escapeHtml(item.lineId || item.id)}" aria-label="Increase ${escapeHtml(getCartItemDisplayName(item))}">+</button>
           </div>
 
           <div class="cart-line-total">
-            ${formatMoney(item.price * item.quantity)}
+            ${formatMoney(getCartItemUnitPrice(item) * item.quantity)}
           </div>
 
-          <button class="cart-remove" type="button" data-remove="${escapeHtml(item.id)}">
+          <button class="cart-remove" type="button" data-remove="${escapeHtml(item.lineId || item.id)}">
             Remove
           </button>
         </div>
@@ -680,15 +896,15 @@ function renderCart() {
 
   cartPanel.querySelectorAll('[data-increase]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const item = cart.find(i => i.id === btn.dataset.increase);
-      if (item) updateQuantity(item.id, item.quantity + 1);
+      const item = cart.find(i => (i.lineId || i.id) === btn.dataset.increase);
+      if (item) updateQuantity(item.lineId || item.id, item.quantity + 1);
     });
   });
 
   cartPanel.querySelectorAll('[data-decrease]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const item = cart.find(i => i.id === btn.dataset.decrease);
-      if (item) updateQuantity(item.id, item.quantity - 1);
+      const item = cart.find(i => (i.lineId || i.id) === btn.dataset.decrease);
+      if (item) updateQuantity(item.lineId || item.id, item.quantity - 1);
     });
   });
 
@@ -754,8 +970,8 @@ function renderMobileCartDock() {
         <div class="mobile-cart-sheet-items">
           ${cart.map(item => `
             <div class="mobile-cart-sheet-item">
-              <span>${escapeHtml(item.name)}</span>
-              <strong>${item.quantity} × ${formatMoney(item.price)}</strong>
+              <span>${escapeHtml(getCartItemDisplayName(item))}</span>
+              <strong>${item.quantity} × ${formatMoney(getCartItemUnitPrice(item))}</strong>
             </div>
           `).join('')}
         </div>
@@ -829,6 +1045,11 @@ function scrollCartPanelIntoView() {
 
 function formatMoney(cents) {
   return `$${(Number(cents || 0) / 100).toFixed(2)}`;
+}
+
+function cssEscape(value) {
+  if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(String(value || ''));
+  return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '\\$&');
 }
 
 function escapeHtml(value) {
@@ -1117,7 +1338,10 @@ document.addEventListener('click', event => {
 });
 
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') toggleMoreCategories(false, true);
+  if (event.key === 'Escape') {
+    toggleMoreCategories(false, true);
+    closeModifierDialog();
+  }
 });
 
 if (typeof navModeMedia.addEventListener === 'function') {
