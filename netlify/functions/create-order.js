@@ -77,26 +77,30 @@ async function cloverFetch(path, options, accessToken) {
 
 function buildLineItem(cartItem) {
   const modifiers = Array.isArray(cartItem.modifiers) ? cartItem.modifiers : [];
+
   const noteParts = [
     cartItem.note ? `Item note: ${cartItem.note}` : '',
     modifiers.length ? `Modifiers: ${modifiers.map(modifier => modifier.name).filter(Boolean).join(', ')}` : ''
   ].filter(Boolean);
 
   const lineItem = {
-    item: { id: cartItem.id },
-    name: cartItem.name,
-    price: Number(cartItem.price || 0),
-    note: noteParts.join('\n')
+    item: { id: cartItem.id }
   };
 
+  if (noteParts.length) {
+    lineItem.note = noteParts.join('\n');
+  }
+
   if (modifiers.length) {
-lineItem.modifications = modifiers
-  .filter(modifier => modifier && modifier.id)
-  .map(modifier => ({
-    modifier: {
-      id: modifier.id
-    }
-  }));
+    lineItem.modifications = modifiers
+      .filter(modifier => modifier && modifier.id)
+      .map(modifier => ({
+        modifier: {
+          id: modifier.id
+        },
+        name: modifier.name || '',
+        amount: Number(modifier.price || 0)
+      }));
   }
 
   return lineItem;
