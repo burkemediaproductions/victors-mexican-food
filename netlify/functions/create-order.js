@@ -90,13 +90,13 @@ function buildLineItem(cartItem) {
   };
 
   if (modifiers.length) {
-    lineItem.modifications = modifiers
-      .filter(modifier => modifier && modifier.id)
-      .map(modifier => ({
-        modifier: {
-          id: modifier.id,
-        },
-      }));
+lineItem.modifications = modifiers
+  .filter(modifier => modifier && modifier.id)
+  .map(modifier => ({
+    modifier: {
+      id: modifier.id
+    }
+  }));
   }
 
   return lineItem;
