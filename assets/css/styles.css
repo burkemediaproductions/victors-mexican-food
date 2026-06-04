@@ -1496,10 +1496,11 @@ body.menu-open .site-header .header-actions > a {
   grid-column: 1;
   grid-row: 1;
   margin: 0;
-  position: sticky;
   top: 7rem;
   z-index: 20;
 }
+
+.order-shell.menu-app {position: sticky;} .menu-category-tabs {position: static;}
 
 .order-shell.menu-app .menu-layout {
   grid-column: 2;
