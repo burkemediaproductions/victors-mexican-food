@@ -562,7 +562,7 @@ function createMenuItemCard(item, categoryName = '') {
         ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ''}
       </div>
       <div class="menu-item-card-footer">
-        <strong>${escapeHtml(item.priceFormatted || formatMoney(item.price))}</strong>
+        ${Number(item.price || 0) > 0 ? `<strong>${escapeHtml(item.priceFormatted || formatMoney(item.price))}</strong>` : ''}
         ${addControl}
       </div>
     </div>
@@ -581,9 +581,24 @@ function getItemModifierGroups(item) {
   return (Array.isArray(item.modifierGroups) ? item.modifierGroups : [])
     .map(group => ({
       ...group,
-      modifiers: Array.isArray(group.modifiers) ? group.modifiers.filter(modifier => modifier && modifier.id) : []
+      modifiers: Array.isArray(group.modifiers) ? group.modifiers.filter(isVisibleModifierOption) : []
     }))
     .filter(group => group.modifiers.length);
+}
+
+
+function isVisibleModifierOption(modifier) {
+  if (!modifier || !modifier.id) return false;
+
+  const name = String(modifier.name || '').trim();
+  const normalizedName = name.toLowerCase();
+
+  if (!name) return false;
+  if (/^-+$/.test(name.replace(/\s+/g, ''))) return false;
+  if (!/[a-z0-9]/i.test(name)) return false;
+  if (normalizedName.includes('refill')) return false;
+
+  return true;
 }
 
 function getModifierSummary(modifiers = []) {
@@ -736,7 +751,7 @@ function createModifierGroupMarkup(group) {
             >
             <span>
               <strong>${escapeHtml(modifier.name)}</strong>
-              ${Number(modifier.price || 0) ? `<em>+${formatMoney(modifier.price)}</em>` : '<em>No charge</em>'}
+              ${Number(modifier.price || 0) ? `<em>+${formatMoney(modifier.price)}</em>` : ''}
             </span>
           </label>
         `).join('')}
