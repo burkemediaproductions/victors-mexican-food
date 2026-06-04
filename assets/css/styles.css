@@ -993,7 +993,6 @@ body.menu-open .site-header .header-actions > a {
 
 .cart-checkout {
   width: 100%;
-  margin-top: 1rem;
 }
 
 
@@ -1039,11 +1038,21 @@ body.menu-open .site-header .header-actions > a {
 
 .clover-field {
   width: 100%;
-  min-height: 54px;
+  height: 54px;
+  min-height: 0;
   border: 1.5px solid rgba(29,20,15,.18);
   border-radius: 14px;
   background: #fff;
-  padding: .85rem 1rem;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.clover-field iframe {
+  height: 22px !important;
+  width: 100% !important;
+  display: block;
 }
 
 .clover-error {
