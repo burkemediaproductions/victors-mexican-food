@@ -293,12 +293,9 @@ function renderCategories() {
     <input class="menu-search-input" data-menu-search type="search" placeholder="Search menu..." autocomplete="off" value="${escapeHtml(searchTerm)}">
   `;
 
-if (navMode !== 'mobile') {
   const quickLabel = document.createElement('div');
   quickLabel.className = 'menu-category-label';
-  quickLabel.textContent = 'Featured categories';
-  nav.appendChild(quickLabel);
-}
+  quickLabel.textContent = navMode === 'mobile' ? 'Quick picks' : 'Featured categories';
 
   const featuredBar = document.createElement('div');
   featuredBar.className = 'menu-category-bar';
