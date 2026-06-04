@@ -1757,8 +1757,7 @@ body.menu-open .site-header .header-actions > a {
   }
 
   .menu-category-label {
-    margin: 0 0 .5rem;
-    font-size: .66rem;
+    display: none;
   }
 
   .menu-category-bar {
