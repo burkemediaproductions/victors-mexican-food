@@ -96,7 +96,6 @@ function buildLineItem(cartItem) {
         modifier: {
           id: modifier.id,
         },
-        amount: Number(modifier.price || 0)
       }));
   }
 
