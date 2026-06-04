@@ -982,7 +982,6 @@ body.menu-open .site-header .header-actions > a {
 .cart-summary {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 2px solid rgba(29,20,15,.12);
 }
 
 .cart-summary div {
@@ -4338,3 +4337,56 @@ body.modifier-dialog-open {
     width: 100%;
   }
 }
+
+/* Ordering button refinements */
+.menu-item-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .65rem;
+  flex-wrap: wrap;
+}
+
+.menu-item-card-actions .button,
+.menu-item-card-actions .button-outline {
+  min-height: 52px;
+  height: auto;
+  padding: .85rem 1rem;
+}
+
+.menu-options-button {
+  background: rgba(255,255,255,.82);
+  color: var(--green);
+  border-color: rgba(12,122,67,.35);
+  box-shadow: none;
+}
+
+.modifier-dialog-top-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: .15rem;
+}
+
+.modifier-dialog-top-actions .button {
+  min-height: 52px;
+  height: auto;
+}
+
+@media (max-width: 540px) {
+  .menu-item-card-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .menu-item-card-actions .button,
+  .menu-item-card-actions .button-outline,
+  .modifier-dialog-top-actions .button {
+    width: 100%;
+  }
+
+  .modifier-dialog-top-actions {
+    justify-content: stretch;
+  }
+}
+

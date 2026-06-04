@@ -91,18 +91,6 @@ function buildLineItem(cartItem) {
     lineItem.note = noteParts.join('\n');
   }
 
-  if (modifiers.length) {
-    lineItem.modifications = modifiers
-      .filter(modifier => modifier && modifier.id)
-      .map(modifier => ({
-        modifier: {
-          id: modifier.id
-        },
-        name: modifier.name || '',
-        amount: Number(modifier.price || 0)
-      }));
-  }
-
   return lineItem;
 }
 

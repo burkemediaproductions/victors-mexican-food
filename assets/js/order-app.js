@@ -540,10 +540,24 @@ function createMenuItemCard(item, categoryName = '') {
   card.className = item.imageUrl ? 'menu-item-card has-image' : 'menu-item-card';
 
   const hasModifiers = getItemModifierGroups(item).length > 0;
+  const hasBasePrice = Number(item.price || 0) > 0;
 
-  const addControl = orderingAvailable
-    ? `<button class="button order-button" type="button" data-add-item>${hasModifiers ? 'Customize' : 'Add'}</button>`
-    : `<button class="button order-button menu-add-disabled" type="button" disabled aria-disabled="true">Browse Only</button>`;
+  let addControl = '';
+
+  if (!orderingAvailable) {
+    addControl = `<button class="button order-button menu-add-disabled" type="button" disabled aria-disabled="true">Browse Only</button>`;
+  } else if (hasModifiers && hasBasePrice) {
+    addControl = `
+      <div class="menu-item-card-actions">
+        <button class="button-outline menu-options-button" type="button" data-options-item>Options</button>
+        <button class="button order-button" type="button" data-add-item>Add</button>
+      </div>
+    `;
+  } else if (hasModifiers) {
+    addControl = `<button class="button order-button" type="button" data-options-item>Options</button>`;
+  } else {
+    addControl = `<button class="button order-button" type="button" data-add-item>Add</button>`;
+  }
 
   const imageMarkup = item.imageUrl
     ? `
@@ -562,7 +576,7 @@ function createMenuItemCard(item, categoryName = '') {
         ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ''}
       </div>
       <div class="menu-item-card-footer">
-        ${Number(item.price || 0) > 0 ? `<strong>${escapeHtml(item.priceFormatted || formatMoney(item.price))}</strong>` : ''}
+        ${hasBasePrice ? `<strong>${escapeHtml(item.priceFormatted || formatMoney(item.price))}</strong>` : ''}
         ${addControl}
       </div>
     </div>
@@ -573,7 +587,8 @@ function createMenuItemCard(item, categoryName = '') {
     card.classList.remove('has-image');
   }, { once: true });
 
-  card.querySelector('[data-add-item]')?.addEventListener('click', () => startAddToCart(item));
+  card.querySelector('[data-add-item]')?.addEventListener('click', () => addToCart(item));
+  card.querySelector('[data-options-item]')?.addEventListener('click', () => startAddToCart(item));
   return card;
 }
 
@@ -674,14 +689,18 @@ function openModifierDialog(item, modifierGroups) {
     <div class="modifier-dialog-card" role="dialog" aria-modal="true" aria-labelledby="modifier-dialog-title">
       <div class="modifier-dialog-header">
         <div>
-          <span class="menu-category-eyebrow">Customize Item</span>
+          <span class="menu-category-eyebrow">Item Options</span>
           <h3 id="modifier-dialog-title">${escapeHtml(item.name)}</h3>
-          <p>${escapeHtml(item.description || 'Choose the options for this item.')}</p>
+          <p>${escapeHtml(item.description || 'Choose any options for this item.')}</p>
         </div>
         <button class="modifier-dialog-close" type="button" data-modifier-close aria-label="Close item options">×</button>
       </div>
 
       <form class="modifier-form" data-modifier-form>
+        <div class="modifier-dialog-top-actions">
+          <button class="button order-button" type="submit">Add to Order</button>
+        </div>
+
         ${modifierGroups.map(group => createModifierGroupMarkup(group)).join('')}
 
         <label class="modifier-note-label">
@@ -714,6 +733,7 @@ function openModifierDialog(item, modifierGroups) {
     if (selected.error) {
       errorNode.textContent = selected.error;
       errorNode.hidden = false;
+      errorNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
