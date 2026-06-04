@@ -95,7 +95,6 @@ function buildLineItem(cartItem) {
       .map(modifier => ({
         modifier: {
           id: modifier.id,
-          name: modifier.name || ''
         },
         amount: Number(modifier.price || 0)
       }));
