@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-labelledby="uberEatsIconTitle">
+  <title id="uberEatsIconTitle">Uber Eats</title>
+  <path fill="currentColor" d="M4 4h2.15v8.05c0 1.48.74 2.25 2.05 2.25s2.05-.77 2.05-2.25V4h2.15v8.12c0 2.72-1.61 4.25-4.2 4.25S4 14.84 4 12.12V4Z"/>
+  <path fill="currentColor" d="M14.05 4h6.35v1.98h-4.2v3.05h3.7v1.93h-3.7v3.25h4.38v1.98h-6.53V4Z"/>
+  <path fill="currentColor" d="M4 18.1h16.6V20H4v-1.9Z"/>
+</svg>

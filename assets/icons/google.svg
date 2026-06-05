@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-labelledby="googleIconTitle">
+  <title id="googleIconTitle">Google</title>
+  <path fill="currentColor" d="M12.24 10.24v3.52h5.02c-.22 1.13-.9 2.09-1.92 2.73v2.27h3.1c1.82-1.67 2.86-4.13 2.86-7.05 0-.5-.05-.99-.13-1.47h-8.93Z"/>
+  <path fill="currentColor" d="M12.24 21.5c2.6 0 4.78-.86 6.37-2.34l-3.1-2.27c-.86.58-1.96.92-3.27.92-2.51 0-4.64-1.7-5.4-3.98H3.63v2.35a9.62 9.62 0 0 0 8.61 5.32Z"/>
+  <path fill="currentColor" d="M6.84 13.83a5.78 5.78 0 0 1 0-3.66V7.82H3.63a9.62 9.62 0 0 0 0 8.36l3.21-2.35Z"/>
+  <path fill="currentColor" d="M12.24 6.19c1.41 0 2.68.49 3.68 1.44l2.75-2.75C17 3.33 14.82 2.5 12.24 2.5a9.62 9.62 0 0 0-8.61 5.32l3.21 2.35c.76-2.28 2.89-3.98 5.4-3.98Z"/>
+</svg>
