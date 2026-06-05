@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-labelledby="emailIconTitle">
+  <title id="emailIconTitle">Email</title>
+  <path fill="currentColor" d="M3.75 5A2.75 2.75 0 0 0 1 7.75v8.5A2.75 2.75 0 0 0 3.75 19h16.5A2.75 2.75 0 0 0 23 16.25v-8.5A2.75 2.75 0 0 0 20.25 5H3.75Zm0 2h16.5c.19 0 .37.04.53.12l-8.14 6.03a1.08 1.08 0 0 1-1.28 0L3.22 7.12c.16-.08.34-.12.53-.12Zm-.75 2.18 7.18 5.32a3.08 3.08 0 0 0 3.64 0L21 9.18v7.07c0 .41-.34.75-.75.75H3.75a.75.75 0 0 1-.75-.75V9.18Z"/>
+</svg>
