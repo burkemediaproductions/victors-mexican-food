@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Victor's Mexican Food Video Review</title>
+  <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
+  <meta name="theme-color" content="#3d2a1f">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --brown: #3d2a1f;
+      --brown-dark: #24160f;
+      --cream: #fff8ed;
+      --sand: #e7d0ab;
+      --gold: #d2a857;
+      --red: #c62828;
+      --green: #0c7a43;
+      --ink: #211713;
+      --muted: #725f52;
+      --card: rgba(255, 248, 237, .96);
+      --shadow: 0 22px 70px rgba(28, 18, 12, .18);
+      --radius: 28px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 10%, rgba(198, 40, 40, .18), transparent 30%),
+        radial-gradient(circle at 92% 4%, rgba(210, 168, 87, .22), transparent 26%),
+        linear-gradient(180deg, var(--brown), #f7ead8 36rem, #fff8ed 100%);
+      line-height: 1.6;
+    }
+
+    a { color: inherit; }
+
+    .container {
+      width: min(1180px, calc(100% - 2rem));
+      margin: 0 auto;
+    }
+
+    .hero {
+      position: relative;
+      padding: clamp(2rem, 6vw, 5rem) 0 clamp(1.5rem, 4vw, 3rem);
+      color: #fff;
+      overflow: hidden;
+      background: radial-gradient(circle at 12% 10%, rgba(198, 40, 40, .18), transparent 30%),
+        radial-gradient(circle at 92% 4%, rgba(210, 168, 87, .22), transparent 26%),
+        linear-gradient(180deg, var(--brown), var(--brown-dark) 36rem, #f7ead8 36rem, #fff8ed 100%);
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,.7), transparent 82%);
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, .5fr);
+      gap: 1.5rem;
+      align-items: end;
+    }
+
+    .private-pill {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: .5rem;
+      padding: .55rem .85rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.16);
+      color: rgba(255,255,255,.88);
+      font-size: .78rem;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 920px;
+      margin: 1rem 0 .8rem;
+      font-size: clamp(2.45rem, 6vw, 5rem);
+      line-height: .92;
+      letter-spacing: -.06em;
+    }
+
+    .hero p {
+      max-width: 760px;
+      margin: 0;
+      color: rgba(255,255,255,.82);
+      font-size: clamp(1rem, 1.45vw, 1.18rem);
+      font-weight: 650;
+    }
+
+    .review-card {
+      padding: 1.2rem;
+      border-radius: 24px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.16);
+      backdrop-filter: blur(14px);
+    }
+
+    .review-card strong {
+      display: block;
+      margin-bottom: .35rem;
+      color: var(--sand);
+      font-size: .9rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .review-card p {
+      font-size: .95rem;
+      line-height: 1.55;
+    }
+
+    .nav-strip {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(36, 22, 15, .92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+
+    .nav-strip .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .55rem;
+      padding: .8rem 0;
+    }
+
+    .nav-strip a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.35rem;
+      padding: .55rem .85rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      color: #fff;
+      text-decoration: none;
+      font-size: .85rem;
+      font-weight: 800;
+    }
+
+    main { padding: clamp(1.5rem, 4vw, 3rem) 0 4rem; }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, .7fr) minmax(260px, .45fr);
+      gap: 1rem;
+      align-items: end;
+      margin: 0 0 1.2rem;
+    }
+
+    .eyebrow {
+      display: block;
+      color: var(--red);
+      font-size: .76rem;
+      font-weight: 900;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      margin-bottom: .45rem;
+    }
+
+    h2 {
+      margin: 0;
+      color: var(--brown-dark);
+      font-size: clamp(1.9rem, 4vw, 3.2rem);
+      line-height: .98;
+      letter-spacing: -.045em;
+    }
+
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    .video-section {
+      margin-bottom: clamp(1.4rem, 4vw, 3rem);
+      padding: clamp(1rem, 2.2vw, 1.35rem);
+      border-radius: 34px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(61, 42, 31, .08);
+    }
+
+    .video-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: start;
+      margin-bottom: 1rem;
+    }
+
+    .video-title {
+      margin: 0;
+      color: var(--brown-dark);
+      font-size: clamp(1.35rem, 2.5vw, 2rem);
+      line-height: 1.05;
+      letter-spacing: -.035em;
+    }
+
+    .video-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-top: .7rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      padding: .43rem .65rem;
+      border-radius: 999px;
+      background: #f0dfc4;
+      color: #5a3a26;
+      font-size: .75rem;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .status {
+      background: rgba(12,122,67,.12);
+      color: var(--green);
+    }
+
+    .open-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.7rem;
+      padding: .72rem 1rem;
+      border-radius: 999px;
+      background: var(--brown-dark);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 900;
+    }
+
+    .embed-wrap {
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 20% 12%, rgba(210,168,87,.22), transparent 28%),
+        linear-gradient(135deg, #2b1b13, #130c09);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+    }
+
+    .embed-wrap::before {
+      content: "";
+      display: block;
+      padding-top: 56.25%;
+    }
+
+    .embed-wrap.vertical {
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    .embed-wrap.vertical::before {
+      padding-top: 177.777%;
+    }
+
+    iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    .placeholder {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 1.25rem;
+      color: rgba(255,255,255,.84);
+      text-align: center;
+    }
+
+    .placeholder-inner {
+      max-width: 520px;
+      padding: 1.2rem;
+      border-radius: 22px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+
+    .placeholder strong {
+      display: block;
+      color: var(--sand);
+      margin-bottom: .35rem;
+      font-size: .92rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .placeholder code {
+      display: inline-block;
+      margin-top: .65rem;
+      padding: .35rem .5rem;
+      border-radius: 8px;
+      background: rgba(0,0,0,.28);
+      color: #fff;
+      font-size: .8rem;
+    }
+
+    .notes {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 20px;
+      background: #fff4e3;
+      border: 1px solid rgba(61,42,31,.08);
+      color: var(--muted);
+      font-weight: 650;
+    }
+    .feedback {
+      margin-top: clamp(1.5rem, 4vw, 3rem);
+      padding: clamp(1.2rem, 3vw, 2rem);
+      border-radius: 34px;
+      background: linear-gradient(180deg, rgba(61,42,31,.98), rgba(36,22,15,.98));
+      color: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .feedback h2 { color: #fff; }
+    .feedback p { color: rgba(255,255,255,.8); }
+
+    .feedback-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .9rem;
+      margin-top: 1rem;
+    }
+
+    .feedback-box {
+      padding: 1rem;
+      border-radius: 20px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.11);
+      color: rgba(255,255,255,.82);
+      font-weight: 700;
+    }
+
+    footer {
+      padding: 2rem 0;
+      color: rgba(255,255,255,.72);
+      background: var(--brown-dark);
+      text-align: center;
+      font-size: .92rem;
+    }
+
+    @media (max-width: 900px) {
+      .hero-inner,
+      .section-head,
+      .feedback-grid,
+      .reels-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .embed-wrap.vertical {
+        max-width: min(420px, 100%);
+      }
+    }
+
+    @media (max-width: 620px) {
+      .container { width: min(100% - 1rem, 1180px); }
+      .video-section { border-radius: 24px; }
+      .nav-strip { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="container hero-inner">
+      <div>
+        <span class="private-pill">Private review page</span>
+        <h1>Victor's Mexican Food Video Drafts</h1>
+        <p>Hi Victor and Carmen! Here are the video drafts for review. Please watch the quick promos first, then the full story video, then the shorter story reels below.</p>
+      </div>
+    </div>
+  </header>
+
+  <nav class="nav-strip" aria-label="Video review navigation">
+    <div class="container">
+      <a href="#promo-4k">Promo 4K</a>
+      <a href="#promo-vertical">Promo Vertical</a>
+      <a href="#full-story">Full Story</a>
+      <a href="#story-reels">Story Reels</a>
+      <a href="#feedback">Feedback</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <span class="eyebrow">Start here</span>
+          <h2>Quick promo videos</h2>
+        </div>
+        <p>These are the shorter promotional cuts made for quick viewing, social media, the website, and local promotion.</p>
+      </div>
+
+      <section class="video-section" id="promo-4k">
+        <div class="video-top">
+          <div>
+            <h3 class="video-title">Quick Promo Video — 4K Version</h3>
+            <div class="video-meta"><span class="pill status">Draft Review</span><span class="pill">Horizontal / 4K</span></div>
+          </div>
+          <a class="open-link" href="https://www.youtube.com/watch?v=FpwfG46yudc" target="_blank" rel="noopener">Open in YouTube</a>
+        </div>
+        <div class="embed-wrap">
+          <!-- Replace PASTE_PROMO_4K_VIDEO_ID with the YouTube video ID -->
+          <iframe src="https://www.youtube.com/embed/FpwfG46yudc" title="Quick Promo Video 4K Version" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        </div>
+      </section>
+
+      <section class="video-section" id="promo-vertical">
+        <div class="video-top">
+          <div>
+            <h3 class="video-title">Promo Vertical Version</h3>
+            <div class="video-meta"><span class="pill status">Draft Review</span><span class="pill">Vertical / Reel</span></div>
+          </div>
+          <a class="open-link" href="https://www.youtube.com/watch?v=nReFFmxACLk" target="_blank" rel="noopener">Open in YouTube</a>
+        </div>
+        <div class="embed-wrap vertical">
+          <!-- Replace PASTE_PROMO_VERTICAL_VIDEO_ID with the YouTube video ID -->
+          <iframe src="https://www.youtube.com/embed/nReFFmxACLk" title="Promo Vertical Version" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        </div>
+      </section>
+
+      <div class="section-head" style="margin-top: clamp(1.5rem, 4vw, 3rem);">
+        <div>
+          <span class="eyebrow">Main video</span>
+          <h2>Full story video</h2>
+        </div>
+        <p>This is the full brand story video about Victor, Carmen, the restaurant, the food, the family history, and the Palm Desert community.</p>
+      </div>
+
+      <section class="video-section" id="full-story">
+        <div class="video-top">
+          <div>
+            <h3 class="video-title">The Story Behind Victor’s Mexican Food | Authentic Mexican Food in Palm Desert</h3>
+            <div class="video-meta"><span class="pill status">Draft Review</span><span class="pill">Full Story</span></div>
+          </div>
+          <a class="open-link" href="https://www.youtube.com/watch?v=-_uGW9CERn8" target="_blank" rel="noopener">Open in YouTube</a>
+        </div>
+        <div class="embed-wrap">
+          <!-- Replace PASTE_FULL_STORY_VIDEO_ID with the YouTube video ID -->
+          <iframe src="https://www.youtube.com/embed/-_uGW9CERn8" title="From Zacatecas to Palm Desert - The Story of Victor's Mexican Food" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        </div>
+      </section>
+
+      <div class="section-head" id="story-reels" style="margin-top: clamp(1.5rem, 4vw, 3rem);">
+        <div>
+          <span class="eyebrow">Story reels</span>
+          <h2>Short clips from the story video</h2>
+        </div>
+        <p>These are vertical cuts from the main story video, each focused on one part of Victor’s story.</p>
+      </div>
+
+      <div class="reels-grid">
+        <section class="video-section" id="reel-1">
+          <div class="video-top"><div><h3 class="video-title">Reel 1 — The Roots Behind Victor’s Mexican Food</h3><div class="video-meta"><span class="pill status">Draft Review</span><span class="pill">Vertical</span></div></div><a class="open-link" href="https://www.youtube.com/watch?v=POe1kv2qQOU" target="_blank" rel="noopener">Open</a></div>
+          <div class="embed-wrap vertical"><iframe src="https://www.youtube.com/embed/POe1kv2qQOU" title="Reel 1 - The Roots Behind Victor's Mexican Food" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+        </section>
+
+        <section class="video-section" id="reel-2">
+          <div class="video-top"><div><h3 class="video-title">Reel 2 — The Chef Dream</h3><div class="video-meta"><span class="pill status">Draft Review</span><span class="pill">Vertical</span></div></div><a class="open-link" href="https://www.youtube.com/watch?v=D_01T0PJ23M" target="_blank" rel="noopener">Open</a></div>
+          <div class="embed-wrap vertical"><iframe src="https://www.youtube.com/embed/D_01T0PJ23M" title="Reel 2 - Victor's Childhood Dream Came True" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+        </section>
+
+        <section class="video-section" id="reel-3">
+          <div class="video-top"><div><h3 class="video-title">Reel 3 — Keep Going</h3><div class="video-meta"><span class="pill status">Draft Review</span><span class="pill">Vertical</span></div></div><a class="open-link" href="https://www.youtube.com/watch?v=Hx8MEceFadM" target="_blank" rel="noopener">Open</a></div>
+          <div class="embed-wrap vertical"><iframe src="https://www.youtube.com/embed/Hx8MEceFadM" title="Reel 3 - 25 Years to Open Victor's Mexican Food" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+        </section>
+
+        <section class="video-section" id="reel-4">
+          <div class="video-top"><div><h3 class="video-title">Reel 4 — No Cans. No Bottles. No Shortcuts. Just Fresh Food.</h3><div class="video-meta"><span class="pill status">Draft Review</span><span class="pill">Vertical</span></div></div><a class="open-link" href="https://www.youtube.com/watch?v=oli7aWpT7S0" target="_blank" rel="noopener">Open</a></div>
+          <div class="embed-wrap vertical"><iframe src="https://www.youtube.com/embed/oli7aWpT7S0" title="Reel 4 - No Shortcuts. Just Good Mexican Food." allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+        </section>
+
+        <section class="video-section" id="reel-5">
+          <div class="video-top"><div><h3 class="video-title">Reel 5 — More Than Flavor</h3><div class="video-meta"><span class="pill status">Draft Review</span><span class="pill">Vertical</span></div></div><a class="open-link" href="https://www.youtube.com/watch?v=QeHvG54VBDw" target="_blank" rel="noopener">Open</a></div>
+          <div class="embed-wrap vertical"><iframe src="https://www.youtube.com/embed/QeHvG54VBDw" title="Reel 5 - More Than Flavor" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+        </section>
+
+        <section class="video-section" id="reel-6">
+          <div class="video-top"><div><h3 class="video-title">Reel 6 — Victor & Carmen's Heart for Service, White Doves for You PS</h3><div class="video-meta"><span class="pill status">Draft Review</span><span class="pill">Vertical</span></div></div><a class="open-link" href="https://www.youtube.com/watch?v=R25AXaUUeRY" target="_blank" rel="noopener">Open</a></div>
+          <div class="embed-wrap vertical"><iframe src="https://www.youtube.com/embed/R25AXaUUeRY" title="Reel 6 - Victor and Carmen's Heart for Service" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+        </section>
+
+        <section class="video-section" id="reel-7">
+          <div class="video-top"><div><h3 class="video-title">Reel 7 — We Hope to See You Soon</h3><div class="video-meta"><span class="pill status">Draft Review</span><span class="pill">Vertical</span></div></div><a class="open-link" href="https://www.youtube.com/watch?v=_Z1t5OgNFrk" target="_blank" rel="noopener">Open</a></div>
+          <div class="embed-wrap vertical"><iframe src="https://www.youtube.com/embed/_Z1t5OgNFrk" title="Reel 7 - From Zacatecas to Palm Desert" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    Private review page for Victor’s Mexican Food. This page is not intended for public search or navigation.
+  </footer>
+</body>
+</html>
