@@ -120,10 +120,15 @@ function normalizeMenu({ categories, items, modifierGroups }) {
         }));
 
       const itemImage = getItemImage(item);
+      const onlineName = getItemOnlineName(item);
+      const cloverName = String(item.name || '').trim();
+      const displayName = onlineName || cloverName;
 
       return {
         id: item.id,
-        name: item.name,
+        name: displayName,
+        onlineName,
+        cloverName,
         description: item.description || '',
         price: item.price || 0,
         priceFormatted: formatMoney(item.price || 0),
@@ -138,14 +143,14 @@ function normalizeMenu({ categories, items, modifierGroups }) {
     id: category.id,
     name: category.name,
     sortOrder: category.sortOrder || 0,
-    items: activeItems.filter((item) =>
-      item.categoryIds.includes(category.id)
-    )
+    items: activeItems
+      .filter((item) => item.categoryIds.includes(category.id))
+      .sort(compareMenuItems)
   }));
 
-  const uncategorizedItems = activeItems.filter(
-    (item) => !item.categoryIds.length
-  );
+  const uncategorizedItems = activeItems
+    .filter((item) => !item.categoryIds.length)
+    .sort(compareMenuItems);
 
   if (uncategorizedItems.length) {
     menuCategories.push({
@@ -162,6 +167,29 @@ function normalizeMenu({ categories, items, modifierGroups }) {
       .filter((category) => category.items.length)
       .sort((a, b) => a.sortOrder - b.sortOrder)
   };
+}
+
+function getItemOnlineName(item) {
+  const candidates = [
+    item.onlineName,
+    item.online_name,
+    item.onlineDisplayName,
+    item.onlineDisplayNameOverride,
+    item.menuName,
+    item.menu_name,
+    item.displayName,
+    item.alternateName
+  ];
+
+  const value = candidates.find(candidate => typeof candidate === 'string' && candidate.trim());
+  return value ? value.trim() : '';
+}
+
+function compareMenuItems(a, b) {
+  return String(a.name || '').localeCompare(String(b.name || ''), undefined, {
+    sensitivity: 'base',
+    numeric: true
+  });
 }
 
 

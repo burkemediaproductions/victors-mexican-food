@@ -1,4 +1,6 @@
 const MENU_ENDPOINT = '/.netlify/functions/menu';
+const ORDER_FULFILLMENT_ENDPOINT = '/.netlify/functions/order-fulfillment';
+const CART_STORAGE_KEY = 'victors-order-cart-v1';
 
 const categoryContainer = document.querySelector('[data-menu-categories]');
 const itemsContainer = document.querySelector('[data-menu-items]');
@@ -7,7 +9,7 @@ const cartPanel = document.querySelector('[data-cart-panel]');
 const BUSINESS_TIME_ZONE = 'America/Los_Angeles';
 const BREAKFAST_START_HOUR = 7;
 const BREAKFAST_END_HOUR = 11;
-const BREAKFAST_CATEGORY_NAMES = ['breakfast burritos', 'breakfast plates'];
+const BREAKFAST_CATEGORY_NAMES = ['breakfast burritos', 'breakfast plates', 'american breakfast'];
 
 const DESKTOP_PRIMARY_CATEGORY_NAMES = [
   'burritos',
@@ -35,7 +37,7 @@ const MOBILE_MAX_QUICK_CATEGORIES = 5;
 const MOBILE_NAV_QUERY = '(max-width: 980px)';
 
 let menuData = null;
-let cart = [];
+let cart = loadSavedCart();
 let activeCategoryIndex = -1;
 let searchTerm = '';
 let featuredCategoryIndexes = [];
@@ -45,6 +47,7 @@ let breakfastWindowActive = isBreakfastWindowActive();
 let navMode = getNavMode();
 let cloverPayment = null;
 let mobileCategoriesCollapsed = false;
+let mobileSearchOpen = false;
 let mobileCartDock = null;
 let mobileCartDockOpen = false;
 let cartToast = null;
@@ -270,21 +273,11 @@ function renderCategories() {
     <strong>Menu Categories</strong>
   `;
 
-  if (navMode === 'mobile' && mobileCategoriesCollapsed) {
-    nav.classList.add('is-collapsed');
+  if (navMode === 'mobile') {
+    renderMobileCategoryControls(nav, header, entries);
+    categoryContainer.appendChild(nav);
+    return;
   }
-
-  const activeCategoryName = menuData.categories[activeCategoryIndex]?.name || 'Menu Categories';
-  const mobileCollapseToggle = document.createElement('button');
-  mobileCollapseToggle.className = 'menu-mobile-category-toggle';
-  mobileCollapseToggle.type = 'button';
-  mobileCollapseToggle.setAttribute('data-mobile-category-toggle', '');
-  mobileCollapseToggle.setAttribute('aria-expanded', mobileCategoriesCollapsed ? 'false' : 'true');
-  mobileCollapseToggle.innerHTML = `
-    <span>${mobileCategoriesCollapsed ? 'Show Categories' : 'Hide Categories'}</span>
-    <strong>${escapeHtml(activeCategoryName)}</strong>
-    <em class="category-toggle-icon" aria-hidden="true"></em>
-  `;
 
   const searchLabel = document.createElement('label');
   searchLabel.className = 'menu-search-label';
@@ -295,7 +288,7 @@ function renderCategories() {
 
   const quickLabel = document.createElement('div');
   quickLabel.className = 'menu-category-label';
-  quickLabel.textContent = navMode === 'mobile' ? 'Quick picks' : 'Featured categories';
+  quickLabel.textContent = 'Featured categories';
 
   const featuredBar = document.createElement('div');
   featuredBar.className = 'menu-category-bar';
@@ -326,7 +319,6 @@ function renderCategories() {
     moreToggle.append(moreText, moreIcon);
 
     if (activeIsInMore) moreToggle.classList.add('active');
-
 
     moreWrap = document.createElement('div');
     moreWrap.className = 'menu-category-more';
@@ -360,7 +352,7 @@ function renderCategories() {
     moreWrap.appendChild(morePanel);
   }
 
-  nav.append(header, mobileCollapseToggle, searchLabel);
+  nav.append(header, searchLabel);
   nav.append(quickLabel, featuredBar);
   if (moreToggle) nav.appendChild(moreToggle);
   if (moreWrap) nav.appendChild(moreWrap);
@@ -380,12 +372,6 @@ function renderCategories() {
     updateCategoryActiveStates();
   });
 
-  categoryContainer.querySelector('[data-mobile-category-toggle]')?.addEventListener('click', () => {
-    mobileCategoriesCollapsed = !mobileCategoriesCollapsed;
-    toggleMoreCategories(false);
-    renderCategories();
-  });
-
   const moreToggleButton = categoryContainer.querySelector('[data-menu-more-toggle]');
   moreToggleButton?.addEventListener('click', () => {
     const more = categoryContainer.querySelector('[data-menu-more]');
@@ -398,6 +384,167 @@ function renderCategories() {
 
   categoryContainer.querySelector('[data-menu-more]')?.addEventListener('click', event => {
     if (event.target === event.currentTarget) toggleMoreCategories(false);
+  });
+}
+
+function renderMobileCategoryControls(nav, header, entries) {
+  const activeCategoryName = menuData.categories[activeCategoryIndex]?.name || entries[0]?.category?.name || 'Menu Categories';
+
+  header.classList.add('menu-category-header-mobile');
+  header.innerHTML = `
+    <span class="menu-category-eyebrow">${searchTerm ? 'Search Results' : 'Menu Category'}</span>
+    <strong>${escapeHtml(searchTerm ? `Searching "${searchTerm}"` : activeCategoryName)}</strong>
+  `;
+
+  const controls = document.createElement('div');
+  controls.className = 'mobile-menu-controls';
+
+  const selectLabel = document.createElement('label');
+  selectLabel.className = 'mobile-category-select-label';
+  selectLabel.innerHTML = `
+    <span class="sr-only">Choose a menu category</span>
+    <select class="mobile-category-select" data-mobile-category-select>
+      ${entries.map(({ category, index }) => `
+        <option value="${escapeHtml(index)}" ${index === activeCategoryIndex ? 'selected' : ''}>
+          ${escapeHtml(category.name)}
+        </option>
+      `).join('')}
+    </select>
+  `;
+
+  const searchToggle = document.createElement('button');
+  searchToggle.className = 'mobile-search-toggle';
+  searchToggle.type = 'button';
+  searchToggle.setAttribute('data-mobile-search-toggle', '');
+  searchToggle.setAttribute('aria-expanded', mobileSearchOpen || Boolean(searchTerm) ? 'true' : 'false');
+  searchToggle.innerHTML = `
+    <span aria-hidden="true" class="mobile-search-icon"></span>
+    <span>Search</span>
+  `;
+
+  controls.append(selectLabel, searchToggle);
+
+  const searchWrap = document.createElement('label');
+  searchWrap.className = `menu-search-label mobile-search-panel${mobileSearchOpen || searchTerm ? ' is-open' : ''}`;
+  searchWrap.innerHTML = `
+    <span class="sr-only">Search menu</span>
+    <input class="menu-search-input" data-menu-search type="search" placeholder="Search menu..." autocomplete="off" value="${escapeHtml(searchTerm)}">
+  `;
+
+  nav.append(controls, searchWrap);
+
+  const select = nav.querySelector('[data-mobile-category-select]');
+  select?.addEventListener('change', event => {
+    const nextIndex = Number(event.currentTarget.value);
+    if (!menuData?.categories?.[nextIndex]) return;
+
+    activeCategoryIndex = nextIndex;
+    searchTerm = '';
+    mobileSearchOpen = false;
+
+    renderCategories();
+    renderItems(menuData.categories[activeCategoryIndex]);
+    toggleMoreCategories(false);
+    requestAnimationFrame(() => scrollCategorySectionIntoView(activeCategoryIndex));
+  });
+
+  const searchInput = nav.querySelector('[data-menu-search]');
+  nav.querySelector('[data-mobile-search-toggle]')?.addEventListener('click', () => {
+    mobileSearchOpen = !mobileSearchOpen;
+
+    if (!mobileSearchOpen && searchTerm) {
+      searchTerm = '';
+      renderCategories();
+      renderItems(menuData.categories[activeCategoryIndex]);
+      return;
+    }
+
+    renderCategories();
+
+    if (mobileSearchOpen) {
+      requestAnimationFrame(() => {
+        const nextInput = categoryContainer?.querySelector('[data-menu-search]');
+        nextInput?.focus({ preventScroll: true });
+      });
+    }
+  });
+
+  searchInput?.addEventListener('input', event => {
+    searchTerm = event.currentTarget.value.trim();
+
+    if (searchTerm) {
+      renderSearchResults(searchTerm);
+    } else {
+      renderItems(menuData.categories[activeCategoryIndex]);
+    }
+
+    updateCategoryActiveStates();
+    renderCategories();
+
+    if (mobileSearchOpen || searchTerm) {
+      requestAnimationFrame(() => {
+        const nextInput = categoryContainer?.querySelector('[data-menu-search]');
+        if (!nextInput) return;
+        nextInput.focus({ preventScroll: true });
+        const length = nextInput.value.length;
+        nextInput.setSelectionRange(length, length);
+      });
+    }
+  });
+}
+
+function scrollItemsHeadingIntoView() {
+  if (getNavMode() !== 'mobile') return;
+
+  const heading = itemsContainer?.querySelector('.menu-results-heading');
+  heading?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function scrollCategorySectionIntoView(index) {
+  if (getNavMode() !== 'mobile') return;
+
+  const heading = itemsContainer?.querySelector(`[data-menu-category-section="${cssEscape(index)}"]`);
+  heading?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function updateMobileCategorySelect() {
+  if (getNavMode() !== 'mobile') return;
+
+  const select = categoryContainer?.querySelector('[data-mobile-category-select]');
+  if (select && String(select.value) !== String(activeCategoryIndex)) {
+    select.value = String(activeCategoryIndex);
+  }
+}
+
+function updateActiveMobileCategoryFromScroll() {
+  if (getNavMode() !== 'mobile' || searchTerm || !itemsContainer || !menuData?.categories?.length) return;
+
+  const headings = Array.from(itemsContainer.querySelectorAll('[data-menu-category-section]'));
+  if (!headings.length) return;
+
+  const stickyOffset = categoryContainer?.getBoundingClientRect().bottom || 0;
+  const targetLine = stickyOffset + 24;
+  let currentIndex = Number(headings[0].dataset.menuCategorySection);
+
+  headings.forEach(heading => {
+    if (heading.getBoundingClientRect().top <= targetLine) {
+      currentIndex = Number(heading.dataset.menuCategorySection);
+    }
+  });
+
+  if (!Number.isFinite(currentIndex) || currentIndex === activeCategoryIndex) return;
+
+  activeCategoryIndex = currentIndex;
+  updateMobileCategorySelect();
+}
+
+let mobileScrollSpyFrame = null;
+function requestMobileScrollSpyUpdate() {
+  if (mobileScrollSpyFrame) return;
+
+  mobileScrollSpyFrame = requestAnimationFrame(() => {
+    mobileScrollSpyFrame = null;
+    updateActiveMobileCategoryFromScroll();
   });
 }
 
@@ -472,11 +619,16 @@ function renderItems(category) {
 
   ensureActiveCategoryIsVisible();
 
+  if (getNavMode() === 'mobile') {
+    renderMobileCategorySections();
+    return;
+  }
+
   const visible = getVisibleCategoryEntries().some(entry => entry.index === activeCategoryIndex);
   const categoryToRender = visible ? menuData.categories[activeCategoryIndex] : category;
 
   itemsContainer.innerHTML = '';
-  itemsContainer.appendChild(createResultsHeading('Menu Category', categoryToRender.name));
+  itemsContainer.appendChild(createResultsHeading('Menu Category', categoryToRender.name, activeCategoryIndex));
 
   const items = Array.isArray(categoryToRender.items) ? categoryToRender.items : [];
 
@@ -486,6 +638,28 @@ function renderItems(category) {
   }
 
   items.forEach(item => itemsContainer.appendChild(createMenuItemCard(item)));
+}
+
+function renderMobileCategorySections() {
+  if (!itemsContainer || !menuData?.categories?.length) return;
+
+  const entries = getVisibleCategoryEntries();
+  itemsContainer.innerHTML = '';
+
+  entries.forEach(({ category, index }) => {
+    itemsContainer.appendChild(createResultsHeading('Menu Category', category.name, index));
+
+    const items = Array.isArray(category.items) ? category.items : [];
+
+    if (!items.length) {
+      itemsContainer.appendChild(createEmptyMessage('No items are currently available in this category.'));
+      return;
+    }
+
+    items.forEach(item => itemsContainer.appendChild(createMenuItemCard(item)));
+  });
+
+  updateMobileCategorySelect();
 }
 
 function renderSearchResults(term) {
@@ -498,7 +672,7 @@ function renderSearchResults(term) {
     const items = Array.isArray(category.items) ? category.items : [];
 
     items.forEach(item => {
-      const haystack = `${item.name || ''} ${item.description || ''} ${category.name || ''}`.toLowerCase();
+      const haystack = getItemSearchText(item, category.name);
       if (haystack.includes(normalizedTerm)) {
         matches.push({ item, categoryName: category.name });
       }
@@ -516,9 +690,14 @@ function renderSearchResults(term) {
   matches.forEach(match => itemsContainer.appendChild(createMenuItemCard(match.item, match.categoryName)));
 }
 
-function createResultsHeading(label, title) {
+function createResultsHeading(label, title, categoryIndex = null) {
   const heading = document.createElement('div');
   heading.className = 'menu-results-heading';
+
+  if (categoryIndex !== null && categoryIndex !== undefined) {
+    heading.dataset.menuCategorySection = String(categoryIndex);
+  }
+
   heading.innerHTML = `
     <span>${escapeHtml(label)}</span>
     <h3>${escapeHtml(title)}</h3>
@@ -538,6 +717,7 @@ function createEmptyMessage(message) {
 function createMenuItemCard(item, categoryName = '') {
   const card = document.createElement('article');
   card.className = item.imageUrl ? 'menu-item-card has-image' : 'menu-item-card';
+  const displayName = getItemDisplayName(item);
 
   const hasModifiers = getItemModifierGroups(item).length > 0;
   const hasBasePrice = Number(item.price || 0) > 0;
@@ -549,8 +729,8 @@ function createMenuItemCard(item, categoryName = '') {
   } else if (hasModifiers && hasBasePrice) {
     addControl = `
       <div class="menu-item-card-actions">
-        <button class="button-outline menu-options-button" type="button" data-options-item>Options</button>
-        <button class="button order-button" type="button" data-add-item>Add</button>
+        <button class="red-button button menu-options-button" type="button" data-options-item>Customize</button>
+        <button class="button order-button" type="button" data-add-item>Add to Order</button>
       </div>
     `;
   } else if (hasModifiers) {
@@ -562,7 +742,7 @@ function createMenuItemCard(item, categoryName = '') {
   const imageMarkup = item.imageUrl
     ? `
       <div class="menu-item-photo-wrap">
-        <img class="menu-item-photo" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}" loading="lazy" decoding="async">
+        <img class="menu-item-photo" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(displayName)}" loading="lazy" decoding="async">
       </div>
     `
     : '';
@@ -572,7 +752,7 @@ function createMenuItemCard(item, categoryName = '') {
     <div class="menu-item-card-body">
       <div class="menu-item-card-copy">
         ${categoryName ? `<span class="menu-item-category">${escapeHtml(categoryName)}</span>` : ''}
-        <h3>${escapeHtml(item.name)}</h3>
+        <h3>${escapeHtml(displayName)}</h3>
         ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ''}
       </div>
       <div class="menu-item-card-footer">
@@ -636,9 +816,28 @@ function getCartItemUnitPrice(item) {
   return Number(item.price || 0) + modifierTotal;
 }
 
+function getItemDisplayName(item) {
+  return String(item?.onlineName || item?.name || item?.cloverName || '').trim();
+}
+
+function getItemSearchText(item, categoryName = '') {
+  return [
+    getItemDisplayName(item),
+    item?.onlineName,
+    item?.name,
+    item?.cloverName,
+    item?.description,
+    categoryName
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
 function getCartItemDisplayName(item) {
+  const baseName = getItemDisplayName(item);
   const summary = getModifierSummary(item.modifiers);
-  return summary ? `${item.name} (${summary})` : item.name;
+  return summary ? `${baseName} (${summary})` : baseName;
 }
 
 function startAddToCart(item) {
@@ -682,25 +881,25 @@ function closeModifierDialog() {
   document.body.classList.remove('modifier-dialog-open');
 }
 
-function openModifierDialog(item, modifierGroups) {
+function openModifierDialog(item, modifierGroups, options = {}) {
   const dialog = ensureModifierDialog();
+  const submitLabel = options.submitLabel || 'Add to Order';
+  const initialModifiers = Array.isArray(options.initialModifiers) ? options.initialModifiers : [];
+  const initialNote = String(options.initialNote || '');
 
   dialog.innerHTML = `
     <div class="modifier-dialog-card" role="dialog" aria-modal="true" aria-labelledby="modifier-dialog-title">
       <div class="modifier-dialog-header">
         <div>
           <span class="menu-category-eyebrow">Item Options</span>
-          <h3 id="modifier-dialog-title">${escapeHtml(item.name)}</h3>
+          <h3 id="modifier-dialog-title">${escapeHtml(getItemDisplayName(item))}</h3>
           <p>${escapeHtml(item.description || 'Choose any options for this item.')}</p>
         </div>
         <button class="modifier-dialog-close" type="button" data-modifier-close aria-label="Close item options">×</button>
       </div>
 
       <form class="modifier-form" data-modifier-form>
-        <div class="modifier-dialog-top-actions">
-          <button class="button order-button" type="submit">Add to Order</button>
-        </div>
-
+       
         ${modifierGroups.map(group => createModifierGroupMarkup(group)).join('')}
 
         <label class="modifier-note-label">
@@ -712,7 +911,7 @@ function openModifierDialog(item, modifierGroups) {
 
         <div class="modifier-dialog-footer">
           <button class="button-outline" type="button" data-modifier-cancel>Cancel</button>
-          <button class="button order-button" type="submit">Add to Order</button>
+          <button class="button order-button" type="submit">${escapeHtml(submitLabel)}</button>
         </div>
       </form>
     </div>
@@ -737,11 +936,36 @@ function openModifierDialog(item, modifierGroups) {
       return;
     }
 
-    addToCart(item, selected.modifiers, selected.note);
+    if (typeof options.onSubmit === 'function') {
+      options.onSubmit(selected);
+    } else {
+      addToCart(item, selected.modifiers, selected.note);
+    }
+
     closeModifierDialog();
   });
 
+  hydrateModifierDialogSelections(dialog, initialModifiers, initialNote);
   dialog.querySelector('input, textarea, button')?.focus({ preventScroll: true });
+}
+
+
+function hydrateModifierDialogSelections(dialog, modifiers = [], note = '') {
+  modifiers.forEach(modifier => {
+    if (!modifier?.id) return;
+
+    const groupId = modifier.groupId ? cssEscape(modifier.groupId) : '';
+    const modifierId = cssEscape(modifier.id);
+    const selector = groupId
+      ? `input[data-group-id="${groupId}"][value="${modifierId}"]`
+      : `input[value="${modifierId}"]`;
+    const input = dialog.querySelector(selector);
+
+    if (input) input.checked = true;
+  });
+
+  const noteField = dialog.querySelector('textarea[name="itemNote"]');
+  if (noteField) noteField.value = note;
 }
 
 function createModifierGroupMarkup(group) {
@@ -834,7 +1058,9 @@ function addToCart(item, modifiers = [], note = '') {
     cart.push({
       lineId,
       id: item.id,
-      name: item.name,
+      name: getItemDisplayName(item),
+      onlineName: item.onlineName || '',
+      cloverName: item.cloverName || item.name || '',
       price: Number(item.price || 0),
       priceFormatted: item.priceFormatted,
       imageUrl: item.imageUrl || '',
@@ -844,8 +1070,96 @@ function addToCart(item, modifiers = [], note = '') {
     });
   }
 
+  saveCart();
   renderCart();
-  showCartToast(`${item.name} added to cart`);
+  showCartToast(`${getItemDisplayName(item)} added to cart`);
+}
+
+
+function findMenuItemById(itemId) {
+  if (!menuData?.categories?.length || !itemId) return null;
+
+  for (const category of menuData.categories) {
+    const match = (Array.isArray(category.items) ? category.items : []).find(item => item.id === itemId);
+    if (match) return match;
+  }
+
+  return null;
+}
+
+function getCartSourceItem(cartItem) {
+  const menuItem = findMenuItemById(cartItem?.id);
+
+  if (!menuItem) return cartItem;
+
+  return {
+    ...menuItem,
+    name: menuItem.name || cartItem.name,
+    onlineName: menuItem.onlineName || cartItem.onlineName || '',
+    cloverName: menuItem.cloverName || cartItem.cloverName || cartItem.name || '',
+    price: Number(menuItem.price ?? cartItem.price ?? 0),
+    priceFormatted: menuItem.priceFormatted || cartItem.priceFormatted || formatMoney(cartItem.price)
+  };
+}
+
+function canCustomizeCartItem(cartItem) {
+  const sourceItem = getCartSourceItem(cartItem);
+  return getItemModifierGroups(sourceItem).length > 0;
+}
+
+function startEditCartItem(lineId) {
+  if (!orderingAvailable) return;
+
+  const cartItem = cart.find(item => (item.lineId || item.id) === lineId);
+  if (!cartItem) return;
+
+  const sourceItem = getCartSourceItem(cartItem);
+  const modifierGroups = getItemModifierGroups(sourceItem);
+
+  if (!modifierGroups.length) return;
+
+  openModifierDialog(sourceItem, modifierGroups, {
+    submitLabel: 'Update Order',
+    initialModifiers: cartItem.modifiers || [],
+    initialNote: cartItem.note || '',
+    onSubmit: selected => updateCartItemOptions(lineId, sourceItem, selected.modifiers, selected.note)
+  });
+}
+
+function updateCartItemOptions(lineId, sourceItem, modifiers = [], note = '') {
+  const currentIndex = cart.findIndex(item => (item.lineId || item.id) === lineId);
+  if (currentIndex < 0) return;
+
+  const currentItem = cart[currentIndex];
+  const normalizedModifiers = Array.isArray(modifiers) ? modifiers : [];
+  const normalizedNote = String(note || '').trim();
+  const nextLineId = getCartLineKey(currentItem.id, normalizedModifiers, normalizedNote);
+
+  const existingIndex = cart.findIndex((item, index) =>
+    index !== currentIndex && (item.lineId || item.id) === nextLineId
+  );
+
+  if (existingIndex >= 0) {
+    cart[existingIndex].quantity += currentItem.quantity;
+    cart.splice(currentIndex, 1);
+  } else {
+    cart[currentIndex] = {
+      ...currentItem,
+      lineId: nextLineId,
+      name: getItemDisplayName(sourceItem) || currentItem.name,
+      onlineName: sourceItem.onlineName || currentItem.onlineName || '',
+      cloverName: sourceItem.cloverName || currentItem.cloverName || currentItem.name || '',
+      price: Number(sourceItem.price ?? currentItem.price ?? 0),
+      priceFormatted: sourceItem.priceFormatted || currentItem.priceFormatted,
+      imageUrl: sourceItem.imageUrl || currentItem.imageUrl || '',
+      modifiers: normalizedModifiers,
+      note: normalizedNote
+    };
+  }
+
+  saveCart();
+  renderCart();
+  showCartToast(`${getItemDisplayName(sourceItem) || currentItem.name} updated`);
 }
 
 function updateQuantity(lineId, quantity) {
@@ -855,12 +1169,63 @@ function updateQuantity(lineId, quantity) {
     .map(item => item.lineId === lineId ? { ...item, quantity } : item)
     .filter(item => item.quantity > 0);
 
+  saveCart();
   renderCart();
 }
 
 function removeFromCart(lineId) {
   cart = cart.filter(item => item.lineId !== lineId);
+  saveCart();
   renderCart();
+}
+
+
+function loadSavedCart() {
+  try {
+    const saved = window.localStorage?.getItem(CART_STORAGE_KEY);
+    if (!saved) return [];
+
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter(item => item && item.id && item.name && Number(item.quantity) > 0)
+      .map(item => ({
+        ...item,
+        price: Number(item.price || 0),
+        quantity: Number(item.quantity || 1),
+        modifiers: Array.isArray(item.modifiers) ? item.modifiers : [],
+        note: String(item.note || ''),
+        lineId: item.lineId || getCartLineKey(item.id, item.modifiers || [], item.note || '')
+      }));
+  } catch (error) {
+    console.warn('Unable to restore saved cart', error);
+    return [];
+  }
+}
+
+function saveCart() {
+  try {
+    if (!window.localStorage) return;
+
+    if (!cart.length) {
+      window.localStorage.removeItem(CART_STORAGE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+  } catch (error) {
+    console.warn('Unable to save cart', error);
+  }
+}
+
+function clearSavedCart() {
+  cart = [];
+  try {
+    window.localStorage?.removeItem(CART_STORAGE_KEY);
+  } catch (error) {
+    console.warn('Unable to clear saved cart', error);
+  }
 }
 
 function getCartSubtotal() {
@@ -897,7 +1262,7 @@ function renderCart() {
       ${cart.map(item => `
         <div class="cart-item">
           <div>
-            <strong>${escapeHtml(item.name)}</strong>
+            <strong>${escapeHtml(getItemDisplayName(item))}</strong>
             ${item.modifiers?.length ? `<span class="cart-modifiers">${escapeHtml(getModifierSummary(item.modifiers))}</span>` : ''}
             ${item.note ? `<span class="cart-modifiers">Note: ${escapeHtml(item.note)}</span>` : ''}
             <span>${formatMoney(getCartItemUnitPrice(item))} each</span>
@@ -913,9 +1278,16 @@ function renderCart() {
             ${formatMoney(getCartItemUnitPrice(item) * item.quantity)}
           </div>
 
-          <button class="cart-remove" type="button" data-remove="${escapeHtml(item.lineId || item.id)}">
-            Remove
-          </button>
+          <div class="cart-item-actions">
+            ${canCustomizeCartItem(item) ? `
+              <button class="cart-customize" type="button" data-customize="${escapeHtml(item.lineId || item.id)}">
+                Customize
+              </button>
+            ` : ''}
+            <button class="cart-remove" type="button" data-remove="${escapeHtml(item.lineId || item.id)}">
+              Remove
+            </button>
+          </div>
         </div>
       `).join('')}
     </div>
@@ -945,6 +1317,10 @@ function renderCart() {
 
   cartPanel.querySelectorAll('[data-remove]').forEach(btn => {
     btn.addEventListener('click', () => removeFromCart(btn.dataset.remove));
+  });
+
+  cartPanel.querySelectorAll('[data-customize]').forEach(btn => {
+    btn.addEventListener('click', () => startEditCartItem(btn.dataset.customize));
   });
 
   cartPanel.querySelector('[data-checkout]')?.addEventListener('click', () => {
@@ -1097,6 +1473,100 @@ function escapeHtml(value) {
   }[char]));
 }
 
+
+async function fetchOrderFulfillment(orderId) {
+  if (!orderId) return null;
+
+  try {
+    const response = await fetch(`${ORDER_FULFILLMENT_ENDPOINT}?orderId=${encodeURIComponent(orderId)}`);
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.warn('Pickup estimate unavailable', result);
+      return null;
+    }
+
+    return result;
+  } catch (error) {
+    console.warn('Pickup estimate request failed', error);
+    return null;
+  }
+}
+
+function getConfiguredPickupPrepMinutes() {
+  const cfg = window.VICTORS_CONFIG || {};
+  const value = Number(cfg.pickupPrepMinutes || cfg.pickupEstimateMinutes || 0);
+  return Number.isFinite(value) && value > 0 ? value : 15;
+}
+
+function getEstimatedReadyAtFromFallback() {
+  const prepMinutes = getConfiguredPickupPrepMinutes();
+  return new Date(Date.now() + prepMinutes * 60 * 1000).toISOString();
+}
+
+function resolvePickupEstimate(fulfillment = null) {
+  const cfg = window.VICTORS_CONFIG || {};
+  const fallbackEnabled = cfg.pickupEstimateFallbackEnabled !== false;
+
+  const timestamp = Number(
+    fulfillment?.pickupTime ||
+    fulfillment?.cloverFulfillmentTime ||
+    fulfillment?.clientCreatedTime ||
+    0
+  );
+
+  if (Number.isFinite(timestamp) && timestamp > 0) {
+    return {
+      source: fulfillment?.source || 'clover',
+      readyAt: new Date(timestamp).toISOString(),
+      label: 'Ready for pickup around'
+    };
+  }
+
+  if (!fallbackEnabled) return null;
+
+  return {
+    source: 'estimated',
+    readyAt: getEstimatedReadyAtFromFallback(),
+    label: 'Estimated pickup around'
+  };
+}
+
+function formatPickupTime(isoDate) {
+  if (!isoDate) return '';
+
+  const date = new Date(isoDate);
+
+  if (Number.isNaN(date.getTime())) return '';
+
+  return date.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+function createPickupEstimateMarkup(estimate) {
+  if (!estimate?.readyAt) {
+    return `
+      <div class="pickup-estimate pickup-estimate-muted">
+        <span>Pickup</span>
+        <strong>We will confirm your pickup time after payment.</strong>
+      </div>
+    `;
+  }
+
+  const time = formatPickupTime(estimate.readyAt);
+  const sourceText = estimate.source === 'clover'
+    ? 'Timing provided by Victor’s ordering system.'
+    : 'Estimated timing based on Victor’s current pickup window.';
+
+ return `
+  <div class="pickup-estimate">
+    <strong>${escapeHtml(time ? `${estimate.label || 'Estimated pickup around'} ${time}` : 'Pickup time will be confirmed after payment.')}</strong>
+  </div>
+`;
+}
+
 function renderCheckout() {
   if (!orderingAvailable) {
     renderCart();
@@ -1132,7 +1602,7 @@ function renderCheckout() {
       </div>
 
       <button class="button order-button cart-checkout" type="submit">
-        Place Order
+        Continue to Payment
       </button>
 
       <button class="cart-remove" type="button" data-back-to-cart>
@@ -1166,7 +1636,7 @@ function renderCheckout() {
     try {
       const submitButton = event.currentTarget.querySelector('button[type="submit"]');
       submitButton.disabled = true;
-      submitButton.textContent = 'Creating Order...';
+      submitButton.textContent = 'Preparing Payment...';
 
       const response = await fetch('/.netlify/functions/create-order', {
         method: 'POST',
@@ -1182,18 +1652,12 @@ function renderCheckout() {
 
       console.log('Clover order created:', result);
 
-      cartPanel.innerHTML = `
-        <h3>Order Created</h3>
-        <p>Your order was created successfully.</p>
-        <p><strong>Order ID:</strong> ${escapeHtml(result.orderId)}</p>
-        <button class="button order-button cart-checkout" type="button" data-next-payment>
-          Continue to Payment
-        </button>
-      `;
+      submitButton.textContent = 'Checking pickup time...';
 
-      cartPanel.querySelector('[data-next-payment]')?.addEventListener('click', () => {
-        renderPayment(result.orderId, getCartSubtotal());
-      });
+      const fulfillment = await fetchOrderFulfillment(result.orderId);
+      const pickupEstimate = resolvePickupEstimate(fulfillment);
+
+      renderPayment(result.orderId, getCartSubtotal(), pickupEstimate);
     } catch (error) {
       alert(error.message);
       renderCart();
@@ -1201,7 +1665,7 @@ function renderCheckout() {
   });
 }
 
-function renderPayment(orderId, amount) {
+function renderPayment(orderId, amount, pickupEstimate = null) {
   if (!orderingAvailable) {
     renderCart();
     return;
@@ -1211,7 +1675,8 @@ function renderPayment(orderId, amount) {
 
   cartPanel.innerHTML = `
     <h3>Payment</h3>
-    <p>Order ID: <strong>${escapeHtml(orderId)}</strong></p>
+    ${createPickupEstimateMarkup(pickupEstimate)}
+    <p class="checkout-order-id">Order ID: <strong>${escapeHtml(orderId)}</strong></p>
     <p>Total due: <strong>${formatMoney(amount)}</strong></p>
 
     <form class="checkout-form" id="clover-payment-form">
@@ -1327,11 +1792,12 @@ function renderPayment(orderId, amount) {
         throw new Error(paymentResult.message || paymentResult.error || 'Payment failed');
       }
 
-      cart = [];
+      clearSavedCart();
 
       cartPanel.innerHTML = `
         <h3>Payment Received</h3>
         <p>Thank you! Your order has been paid successfully.</p>
+        ${createPickupEstimateMarkup(pickupEstimate)}
         <p><strong>Order ID:</strong> ${escapeHtml(orderId)}</p>
       `;
       renderMobileCartDock();
@@ -1384,6 +1850,9 @@ if (typeof navModeMedia.addEventListener === 'function') {
 } else if (typeof navModeMedia.addListener === 'function') {
   navModeMedia.addListener(refreshTimeSensitiveMenu);
 }
+
+window.addEventListener('scroll', requestMobileScrollSpyUpdate, { passive: true });
+window.addEventListener('resize', requestMobileScrollSpyUpdate);
 
 setInterval(refreshTimeSensitiveMenu, 60000);
 

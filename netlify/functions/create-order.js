@@ -25,9 +25,25 @@ exports.handler = async function (event) {
       return json(400, { error: 'Cart is empty' });
     }
 
+    // Customer lookup/create is intentionally non-blocking.
+    // If this Clover token does not have customer permissions yet, the order still works.
+    const customerSync = await syncCloverCustomer({
+      merchantId,
+      accessToken,
+      customerName,
+      phone,
+      email
+    });
+
     const orderCart = {
       title: `Website Order - ${customerName || 'Guest'}`,
-      note: buildOrderNote({ customerName, phone, email, orderNotes }),
+      note: buildOrderNote({
+        customerName,
+        phone,
+        email,
+        orderNotes,
+        customerSync
+      }),
       lineItems: cart.flatMap((cartItem) => {
         return Array.from({ length: cartItem.quantity || 1 }).map(() => buildLineItem(cartItem));
       })
@@ -42,10 +58,19 @@ exports.handler = async function (event) {
       accessToken
     );
 
+    const customerAttach = await attachCustomerToOrder({
+      merchantId,
+      accessToken,
+      orderId: cloverResponse.id,
+      customerId: customerSync?.customer?.id
+    });
+
     return json(200, {
       success: true,
       orderId: cloverResponse.id,
-      cloverOrder: cloverResponse
+      cloverOrder: cloverResponse,
+      customerSync,
+      customerAttach
     });
   } catch (error) {
     return json(500, {
@@ -55,7 +80,7 @@ exports.handler = async function (event) {
   }
 };
 
-async function cloverFetch(path, options, accessToken) {
+async function cloverFetch(path, options = {}, accessToken) {
   const response = await fetch(`${CLOVER_API_BASE}${path}`, {
     ...options,
     headers: {
@@ -69,10 +94,245 @@ async function cloverFetch(path, options, accessToken) {
   const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(`Clover API error ${response.status}: ${text}`);
+    const error = new Error(`Clover API error ${response.status}: ${text}`);
+    error.status = response.status;
+    error.body = text;
+    throw error;
   }
 
   return text ? JSON.parse(text) : {};
+}
+
+async function syncCloverCustomer({ merchantId, accessToken, customerName, phone, email }) {
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPhone = normalizePhone(phone);
+
+  if (!normalizedEmail && !normalizedPhone) {
+    return {
+      success: false,
+      skipped: true,
+      reason: 'No email or phone provided'
+    };
+  }
+
+  try {
+    const existingCustomer = await findCloverCustomer({
+      merchantId,
+      accessToken,
+      email: normalizedEmail,
+      phone: normalizedPhone
+    });
+
+    if (existingCustomer) {
+      await ensureCustomerContactDetails({
+        merchantId,
+        accessToken,
+        customer: existingCustomer,
+        email: normalizedEmail,
+        phone: normalizedPhone
+      });
+
+      return {
+        success: true,
+        action: 'matched',
+        customer: sanitizeCustomer(existingCustomer)
+      };
+    }
+
+    const createdCustomer = await createCloverCustomer({
+      merchantId,
+      accessToken,
+      customerName,
+      email: normalizedEmail,
+      phone: normalizedPhone
+    });
+
+    return {
+      success: true,
+      action: 'created',
+      customer: sanitizeCustomer(createdCustomer)
+    };
+  } catch (error) {
+    return {
+      success: false,
+      skipped: true,
+      reason: 'Customer lookup/create failed',
+      status: error.status || null,
+      message: error.message
+    };
+  }
+}
+
+async function findCloverCustomer({ merchantId, accessToken, email, phone }) {
+  const candidates = [];
+
+  if (email) {
+    candidates.push(
+      `emailAddresses.emailAddress=${email}`,
+      `emailAddresses.emailAddress==${email}`
+    );
+  }
+
+  if (phone) {
+    candidates.push(
+      `phoneNumbers.phoneNumber=${phone}`,
+      `phoneNumbers.phoneNumber==${phone}`
+    );
+  }
+
+  for (const filter of candidates) {
+    try {
+      const result = await cloverFetch(
+        `/v3/merchants/${merchantId}/customers?expand=emailAddresses,phoneNumbers&limit=20&filter=${encodeURIComponent(filter)}`,
+        { method: 'GET' },
+        accessToken
+      );
+
+      const match = findMatchingCustomer(result.elements || [], { email, phone });
+      if (match) return match;
+    } catch (error) {
+      // If a filter expression is not supported by Clover, try the next strategy.
+      if (error.status === 401 || error.status === 403) throw error;
+    }
+  }
+
+  // Fallback for small customer lists / unclear filter syntax.
+  const result = await cloverFetch(
+    `/v3/merchants/${merchantId}/customers?expand=emailAddresses,phoneNumbers&limit=200`,
+    { method: 'GET' },
+    accessToken
+  );
+
+  return findMatchingCustomer(result.elements || [], { email, phone });
+}
+
+function findMatchingCustomer(customers, { email, phone }) {
+  return customers.find(customer => {
+    const emails = customer.emailAddresses?.elements || customer.emailAddresses || [];
+    const phones = customer.phoneNumbers?.elements || customer.phoneNumbers || [];
+
+    const emailMatch = email && emails.some(entry => normalizeEmail(entry.emailAddress) === email);
+    const phoneMatch = phone && phones.some(entry => normalizePhone(entry.phoneNumber) === phone);
+
+    return emailMatch || phoneMatch;
+  }) || null;
+}
+
+async function createCloverCustomer({ merchantId, accessToken, customerName, email, phone }) {
+  const { firstName, lastName } = splitName(customerName);
+
+  const customer = await cloverFetch(
+    `/v3/merchants/${merchantId}/customers`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        marketingAllowed: false
+      })
+    },
+    accessToken
+  );
+
+  await ensureCustomerContactDetails({
+    merchantId,
+    accessToken,
+    customer,
+    email,
+    phone
+  });
+
+  return cloverFetch(
+    `/v3/merchants/${merchantId}/customers/${customer.id}?expand=emailAddresses,phoneNumbers`,
+    { method: 'GET' },
+    accessToken
+  );
+}
+
+async function ensureCustomerContactDetails({ merchantId, accessToken, customer, email, phone }) {
+  if (!customer?.id) return;
+
+  const emails = customer.emailAddresses?.elements || customer.emailAddresses || [];
+  const phones = customer.phoneNumbers?.elements || customer.phoneNumbers || [];
+
+  const hasEmail = email && emails.some(entry => normalizeEmail(entry.emailAddress) === email);
+  const hasPhone = phone && phones.some(entry => normalizePhone(entry.phoneNumber) === phone);
+
+  if (email && !hasEmail) {
+    await ignoreDuplicateOrPermissionError(() => cloverFetch(
+      `/v3/merchants/${merchantId}/customers/${customer.id}/email_addresses`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          emailAddress: email,
+          primaryEmail: true
+        })
+      },
+      accessToken
+    ));
+  }
+
+  if (phone && !hasPhone) {
+    await ignoreDuplicateOrPermissionError(() => cloverFetch(
+      `/v3/merchants/${merchantId}/customers/${customer.id}/phone_numbers`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          phoneNumber: phone
+        })
+      },
+      accessToken
+    ));
+  }
+}
+
+async function ignoreDuplicateOrPermissionError(callback) {
+  try {
+    await callback();
+  } catch (error) {
+    // Customer contact additions should not block checkout.
+    if (![400, 401, 403, 409].includes(Number(error.status))) {
+      throw error;
+    }
+  }
+}
+
+async function attachCustomerToOrder({ merchantId, accessToken, orderId, customerId }) {
+  if (!merchantId || !accessToken || !orderId || !customerId) {
+    return {
+      success: false,
+      skipped: true,
+      reason: 'Missing order or customer id'
+    };
+  }
+
+  try {
+    const updatedOrder = await cloverFetch(
+      `/v3/merchants/${merchantId}/orders/${orderId}`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          customers: [{ id: customerId }]
+        })
+      },
+      accessToken
+    );
+
+    return {
+      success: true,
+      customerId,
+      orderId: updatedOrder.id || orderId
+    };
+  } catch (error) {
+    return {
+      success: false,
+      skipped: true,
+      customerId,
+      reason: 'Unable to attach customer to order',
+      status: error.status || null,
+      message: error.message
+    };
+  }
 }
 
 function buildLineItem(cartItem) {
@@ -94,16 +354,58 @@ function buildLineItem(cartItem) {
   return lineItem;
 }
 
-function buildOrderNote({ customerName, phone, email, orderNotes }) {
+function buildOrderNote({ customerName, phone, email, orderNotes, customerSync }) {
   return [
     'Website order',
     customerName ? `Name: ${customerName}` : '',
     phone ? `Phone: ${phone}` : '',
     email ? `Email: ${email}` : '',
+    customerSync?.customer?.id ? `Clover customer: ${customerSync.customer.id}` : '',
     orderNotes ? `Notes: ${orderNotes}` : ''
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+function splitName(name) {
+  const parts = String(name || 'Guest').trim().split(/\s+/).filter(Boolean);
+
+  if (!parts.length) {
+    return { firstName: 'Website', lastName: 'Guest' };
+  }
+
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: '' };
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' ')
+  };
+}
+
+function normalizeEmail(value) {
+  const email = String(value || '').trim().toLowerCase();
+  return email && email.includes('@') ? email : '';
+}
+
+function normalizePhone(value) {
+  const digits = String(value || '').replace(/\D+/g, '');
+  if (!digits) return '';
+
+  // Store US numbers in a predictable 10-digit format for easier matching.
+  if (digits.length === 11 && digits.startsWith('1')) return digits.slice(1);
+  return digits;
+}
+
+function sanitizeCustomer(customer) {
+  if (!customer) return null;
+
+  return {
+    id: customer.id,
+    firstName: customer.firstName || '',
+    lastName: customer.lastName || ''
+  };
 }
 
 function json(statusCode, body) {
