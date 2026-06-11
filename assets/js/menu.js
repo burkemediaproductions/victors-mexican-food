@@ -109,24 +109,40 @@ function normalizeMenu({ categories, items, modifierGroups }) {
         .map((groupRef) => modifierGroupMap.get(groupRef.id) || groupRef)
         .map((group) => ({
           id: group.id,
-          name: group.name,
+          name: getModifierGroupDisplayName(group),
+          cloverName: String(group.name || '').trim(),
+          onlineName: getModifierGroupOnlineName(group),
           minRequired: group.minRequired || 0,
           maxAllowed: group.maxAllowed || null,
-          modifiers: (group.modifiers?.elements || []).map((modifier) => ({
-            id: modifier.id,
-            name: modifier.name,
-            price: modifier.price || 0
-          }))
-        }));
+          modifiers: (group.modifiers?.elements || [])
+            .filter(isShownOnline)
+            .map((modifier) => ({
+              id: modifier.id,
+              name: getModifierDisplayName(modifier),
+              cloverName: String(modifier.name || '').trim(),
+              onlineName: getModifierOnlineName(modifier),
+              price: modifier.price || 0
+            }))
+        }))
+        .filter((group) => group.modifiers.length);
+
+      const itemImage = getItemImage(item);
+      const onlineName = getItemOnlineName(item);
+      const cloverName = String(item.name || '').trim();
+      const displayName = onlineName || cloverName;
 
       return {
         id: item.id,
-        name: item.name,
+        name: displayName,
+        onlineName,
+        cloverName,
         description: item.description || '',
         price: item.price || 0,
         priceFormatted: formatMoney(item.price || 0),
         categoryIds: itemCategoryIds,
-        modifierGroups: itemModifierGroups
+        modifierGroups: itemModifierGroups,
+        imageUrl: itemImage.url,
+        hasImage: itemImage.hasImage
       };
     });
 
@@ -134,14 +150,14 @@ function normalizeMenu({ categories, items, modifierGroups }) {
     id: category.id,
     name: category.name,
     sortOrder: category.sortOrder || 0,
-    items: activeItems.filter((item) =>
-      item.categoryIds.includes(category.id)
-    )
+    items: activeItems
+      .filter((item) => item.categoryIds.includes(category.id))
+      .sort(compareMenuItems)
   }));
 
-  const uncategorizedItems = activeItems.filter(
-    (item) => !item.categoryIds.length
-  );
+  const uncategorizedItems = activeItems
+    .filter((item) => !item.categoryIds.length)
+    .sort(compareMenuItems);
 
   if (uncategorizedItems.length) {
     menuCategories.push({
@@ -160,6 +176,180 @@ function normalizeMenu({ categories, items, modifierGroups }) {
   };
 }
 
+function getItemOnlineName(item) {
+  const candidates = [
+    item.onlineName,
+    item.online_name,
+    item.onlineDisplayName,
+    item.onlineDisplayNameOverride,
+    item.menuName,
+    item.menu_name,
+    item.displayName,
+    item.alternateName
+  ];
+
+  const value = candidates.find(candidate => typeof candidate === 'string' && candidate.trim());
+  return value ? value.trim() : '';
+}
+
+function compareMenuItems(a, b) {
+  return String(a.name || '').localeCompare(String(b.name || ''), undefined, {
+    sensitivity: 'base',
+    numeric: true
+  });
+}
+
+
+function getModifierGroupOnlineName(group) {
+  const candidates = [
+    group.onlineName,
+    group.online_name,
+    group.onlineModifierGroupName,
+    group.onlineDisplayName,
+    group.onlineDisplayNameOverride,
+    group.displayName,
+    group.alternateName
+  ];
+
+  const value = candidates.find(candidate => typeof candidate === 'string' && candidate.trim());
+  return value ? value.trim() : '';
+}
+
+function getModifierGroupDisplayName(group) {
+  const onlineName = getModifierGroupOnlineName(group);
+  const cloverName = String(group.name || '').trim();
+  return onlineName || cloverName || 'Options';
+}
+
+function getModifierOnlineName(modifier) {
+  const candidates = [
+    modifier.onlineName,
+    modifier.online_name,
+    modifier.onlineModifierName,
+    modifier.onlineDisplayName,
+    modifier.onlineDisplayNameOverride,
+    modifier.displayName,
+    modifier.alternateName
+  ];
+
+  const value = candidates.find(candidate => typeof candidate === 'string' && candidate.trim());
+  return value ? value.trim() : '';
+}
+
+function getModifierDisplayName(modifier) {
+  const onlineName = getModifierOnlineName(modifier);
+  const cloverName = String(modifier.name || '').trim();
+  return onlineName || cloverName;
+}
+
+function parseOnlineBoolean(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value !== 'string') return null;
+
+  const normalized = value.trim().toLowerCase();
+
+  if (['true', '1', 'yes', 'y', 'on', 'show', 'shown', 'visible', 'enabled'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'n', 'off', 'hide', 'hidden', 'disabled'].includes(normalized)) return false;
+
+  return null;
+}
+
+function isShownOnline(entity) {
+  if (!entity) return false;
+
+  const hideCandidates = [
+    entity.hiddenOnline,
+    entity.hideOnline,
+    entity.onlineHidden,
+    entity.isHiddenOnline,
+    entity.hiddenFromOnline,
+    entity.hideFromOnlineOrdering
+  ];
+
+  for (const candidate of hideCandidates) {
+    const parsed = parseOnlineBoolean(candidate);
+    if (parsed === true) return false;
+  }
+
+  const showCandidates = [
+    entity.showOnline,
+    entity.online,
+    entity.isOnline,
+    entity.availableOnline,
+    entity.onlineEnabled,
+    entity.enabledForOnline,
+    entity.visibleOnline,
+    entity.showInOnlineOrdering,
+    entity.showOnOnlineOrdering,
+    entity.showInOnlineMenu
+  ];
+
+  for (const candidate of showCandidates) {
+    const parsed = parseOnlineBoolean(candidate);
+    if (parsed !== null) return parsed;
+  }
+
+  // Older Clover responses may omit online visibility flags entirely.
+  // In that case, keep the option visible instead of accidentally hiding the whole menu.
+  return true;
+}
+
+
+
+function getItemImage(item) {
+  const directImageUrl = getDirectImageUrl(item);
+
+  if (directImageUrl) {
+    return {
+      hasImage: true,
+      url: directImageUrl
+    };
+  }
+
+  if (hasCloverItemImage(item)) {
+    return {
+      hasImage: true,
+      url: `/.netlify/functions/menu-image?itemId=${encodeURIComponent(item.id)}`
+    };
+  }
+
+  return {
+    hasImage: false,
+    url: ''
+  };
+}
+
+function getDirectImageUrl(item) {
+  const candidates = [
+    item.imageUrl,
+    item.imageURL,
+    item.image_url,
+    item.photoUrl,
+    item.photoURL,
+    item.photo_url,
+    item.pictureUrl,
+    item.pictureURL,
+    item.picture_url,
+    item.image?.url,
+    item.image?.href,
+    item.images?.elements?.[0]?.url,
+    item.images?.elements?.[0]?.href
+  ];
+
+  return candidates.find(value => typeof value === 'string' && /^https?:\/\//i.test(value.trim())) || '';
+}
+
+function hasCloverItemImage(item) {
+  return Boolean(
+    item.imageFilename ||
+      item.imageFileName ||
+      item.imageId ||
+      item.image?.id ||
+      item.images?.elements?.length ||
+      item.hasImage === true
+  );
+}
 
 function getOrderingAvailability() {
   const explicit = parseBooleanEnv(
