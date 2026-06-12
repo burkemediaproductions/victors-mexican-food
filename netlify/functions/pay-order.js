@@ -30,7 +30,8 @@ exports.handler = async function (event) {
       orderId,
       customerEmail,
       customerName,
-      pickupEstimate
+      pickupEstimate,
+      tipAmount = 0
     } = JSON.parse(event.body || '{}');
 
     if (!source || !amount || !orderId) {
@@ -53,7 +54,8 @@ exports.handler = async function (event) {
         source,
         description: `Victor's Mexican Food website order ${orderId}`,
         metadata: {
-          orderId
+          orderId,
+          tipAmount: String(Math.max(0, Number(tipAmount || 0) || 0))
         }
       })
     });
@@ -88,7 +90,8 @@ exports.handler = async function (event) {
       orderDetails,
       customerEmail,
       customerName,
-      pickupEstimate
+      pickupEstimate,
+      tipAmount
     });
 
     return json(200, {
@@ -203,7 +206,8 @@ async function sendConfirmationEmail({
   orderDetails,
   customerEmail,
   customerName,
-  pickupEstimate
+  pickupEstimate,
+  tipAmount = 0
 }) {
   const apiKey = process.env.MAILGUN_API_KEY;
   const domain = process.env.MAILGUN_DOMAIN;
@@ -240,7 +244,8 @@ async function sendConfirmationEmail({
     orderId,
     total,
     estimatedPickup,
-    orderItems
+    orderItems,
+    tipAmount
   });
 
   const html = buildConfirmationHtml({
@@ -248,7 +253,8 @@ async function sendConfirmationEmail({
     orderId,
     total,
     estimatedPickup,
-    orderItems
+    orderItems,
+    tipAmount
   });
 
   try {
@@ -377,7 +383,7 @@ function normalizeFulfillmentEvent(value) {
   return value;
 }
 
-function buildConfirmationText({ name, orderId, total, estimatedPickup, orderItems }) {
+function buildConfirmationText({ name, orderId, total, estimatedPickup, orderItems, tipAmount = 0 }) {
   const itemLines = orderItems.length
     ? orderItems.flatMap((item) => {
         const lines = [`- ${item.name}${item.price ? ` (${formatMoney(item.price)})` : ''}`];
@@ -392,7 +398,8 @@ function buildConfirmationText({ name, orderId, total, estimatedPickup, orderIte
     `Thank you for your order from Victor's Mexican Food!`,
     '',
     `Order ID: ${orderId}`,
-    `Total: ${total}`,
+    Number(tipAmount || 0) > 0 ? `Tip: ${formatMoney(tipAmount)}` : '',
+    `Total paid: ${total}`,
     estimatedPickup ? `Estimated pickup around ${estimatedPickup}` : '',
     '',
     `Your order:`,
@@ -406,7 +413,7 @@ function buildConfirmationText({ name, orderId, total, estimatedPickup, orderIte
   ].filter(line => line !== '').join('\n');
 }
 
-function buildConfirmationHtml({ name, orderId, total, estimatedPickup, orderItems }) {
+function buildConfirmationHtml({ name, orderId, total, estimatedPickup, orderItems, tipAmount = 0 }) {
   const safeName = escapeHtml(firstNameOnly(name));
   const safeOrderId = escapeHtml(orderId);
   const safeTotal = escapeHtml(total);
@@ -468,6 +475,11 @@ function buildConfirmationHtml({ name, orderId, total, estimatedPickup, orderIte
                     <td style="padding:18px 18px 8px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:#8a3c22;">Order ID</td>
                     <td align="right" style="padding:18px 18px 8px;font-size:16px;font-weight:800;color:#21130c;">${safeOrderId}</td>
                   </tr>
+                  ${Number(tipAmount || 0) > 0 ? `
+                  <tr>
+                    <td style="padding:8px 18px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:#8a3c22;">Tip</td>
+                    <td align="right" style="padding:8px 18px;font-size:16px;font-weight:800;color:#21130c;">${escapeHtml(formatMoney(tipAmount))}</td>
+                  </tr>` : ''}
                   <tr>
                     <td style="padding:8px 18px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:#8a3c22;">Total paid</td>
                     <td align="right" style="padding:8px 18px;font-size:16px;font-weight:800;color:#21130c;">${safeTotal}</td>

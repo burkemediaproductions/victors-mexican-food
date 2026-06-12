@@ -1267,6 +1267,50 @@ function normalizeCheckoutTotals(value) {
   };
 }
 
+function getTipSuggestionAmount(subtotal, percent) {
+  return Math.round(Number(subtotal || 0) * (Number(percent || 0) / 100));
+}
+
+function getTipGrandTotal(totals, tipAmount) {
+  return Number(totals?.total || 0) + Number(tipAmount || 0);
+}
+
+function createTipOptionsMarkup(totals) {
+  const percentages = [10, 15, 18, 20];
+
+  return `
+    <div class="tip-section" data-tip-section>
+      <p class="tip-section-title">Leave a tip</p>
+      <div class="tip-options">
+        <button class="tip-option active" type="button" data-tip-option="0">
+          <span>None</span>
+        </button>
+        ${percentages.map(percent => {
+          const amount = getTipSuggestionAmount(totals.subtotal, percent);
+          return `
+            <button class="tip-option" type="button" data-tip-option="${escapeHtml(amount)}">
+              <span>${escapeHtml(percent)}%</span>
+              <strong>${escapeHtml(formatMoney(amount))}</strong>
+            </button>
+          `;
+        }).join('')}
+      </div>
+      <button class="tip-custom" type="button" data-tip-custom>Custom tip amount +</button>
+    </div>
+  `;
+}
+
+function updatePaymentTotalsDisplay(form, totals, tipAmount) {
+  const tipNode = cartPanel?.querySelector('[data-tip-amount]');
+  const totalNode = cartPanel?.querySelector('[data-total-due]');
+  const payButton = form?.querySelector('button[type="submit"]');
+  const grandTotal = getTipGrandTotal(totals, tipAmount);
+
+  if (tipNode) tipNode.textContent = formatMoney(tipAmount);
+  if (totalNode) totalNode.textContent = formatMoney(grandTotal);
+  if (payButton) payButton.textContent = `Pay ${formatMoney(grandTotal)}`;
+}
+
 function renderCart() {
   if (!cartPanel) return;
 
@@ -1508,6 +1552,28 @@ function escapeHtml(value) {
   }[char]));
 }
 
+function getFriendlyCheckoutError(error) {
+  const message = String(error?.message || error || '');
+
+  if (/429|too many requests/i.test(message)) {
+    return 'Victor’s ordering system is busy right now. Please wait a moment and try again.';
+  }
+
+  if (/network|failed to fetch|load failed/i.test(message)) {
+    return 'We could not reach Victor’s ordering system. Please check your connection and try again.';
+  }
+
+  if (/payment failed|card|token|declined/i.test(message)) {
+    return 'We could not complete the payment. Please check your card details or try another card.';
+  }
+
+  if (/menu|unavailable/i.test(message)) {
+    return 'The menu is temporarily unavailable. Please refresh the page and try again.';
+  }
+
+  return message || 'Something went wrong. Please wait a moment and try again.';
+}
+
 
 async function fetchOrderFulfillment(orderId) {
   if (!orderId) return null;
@@ -1696,7 +1762,7 @@ function renderCheckout() {
 
       renderPayment(result.orderId, checkoutTotals, pickupEstimate);
     } catch (error) {
-      alert(error.message);
+      alert(getFriendlyCheckoutError(error));
       renderCart();
     }
   });
@@ -1719,8 +1785,11 @@ function renderPayment(orderId, amount, pickupEstimate = null) {
     <div class="cart-summary">
       <div><span>Subtotal</span><strong>${formatMoney(totals.subtotal)}</strong></div>
       <div><span>Estimated Tax</span><strong>${formatMoney(totals.tax)}</strong></div>
-      <div><span>Total due</span><strong>${formatMoney(totals.total)}</strong></div>
+      <div><span>Tip</span><strong data-tip-amount>${formatMoney(0)}</strong></div>
+      <div><span>Total due</span><strong data-total-due>${formatMoney(totals.total)}</strong></div>
     </div>
+
+    ${createTipOptionsMarkup(totals)}
 
     <form class="checkout-form" id="clover-payment-form">
       <label>
@@ -1786,6 +1855,40 @@ function renderPayment(orderId, amount, pickupEstimate = null) {
 
   const form = document.getElementById('clover-payment-form');
   const status = cartPanel.querySelector('[data-payment-status]');
+  let selectedTipAmount = 0;
+
+  cartPanel.querySelectorAll('[data-tip-option]').forEach(button => {
+    button.addEventListener('click', () => {
+      selectedTipAmount = Math.max(0, Number(button.dataset.tipOption || 0) || 0);
+
+      cartPanel.querySelectorAll('[data-tip-option]').forEach(option => {
+        option.classList.toggle('active', option === button);
+      });
+
+      updatePaymentTotalsDisplay(form, totals, selectedTipAmount);
+    });
+  });
+
+  cartPanel.querySelector('[data-tip-custom]')?.addEventListener('click', () => {
+    const value = window.prompt('Enter custom tip amount', '0.00');
+    if (value === null) return;
+
+    const dollars = Number(String(value).replace(/[^0-9.]/g, ''));
+    if (!Number.isFinite(dollars) || dollars < 0) {
+      status.textContent = 'Please enter a valid tip amount.';
+      return;
+    }
+
+    selectedTipAmount = Math.round(dollars * 100);
+
+    cartPanel.querySelectorAll('[data-tip-option]').forEach(option => {
+      option.classList.remove('active');
+    });
+
+    updatePaymentTotalsDisplay(form, totals, selectedTipAmount);
+  });
+
+  updatePaymentTotalsDisplay(form, totals, selectedTipAmount);
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -1818,7 +1921,8 @@ function renderPayment(orderId, amount, pickupEstimate = null) {
       const paymentPayload = {
         orderId: orderId,
         source: source,
-        amount: Number(totals.total)
+        amount: Number(getTipGrandTotal(totals, selectedTipAmount)),
+        tipAmount: Number(selectedTipAmount)
       };
 
       console.log('Sending payment payload:', paymentPayload);
@@ -1845,9 +1949,9 @@ function renderPayment(orderId, amount, pickupEstimate = null) {
       `;
       renderMobileCartDock();
     } catch (error) {
-      status.textContent = error.message;
+      status.textContent = getFriendlyCheckoutError(error);
       button.disabled = false;
-      button.textContent = `Pay ${formatMoney(totals.total)}`;
+      button.textContent = `Pay ${formatMoney(getTipGrandTotal(totals, selectedTipAmount))}`;
     }
   });
 }
