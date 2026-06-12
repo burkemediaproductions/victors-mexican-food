@@ -5,6 +5,85 @@ const CLOVER_API_BASE =
 
 const CLOVER_PAGE_LIMIT = 1000;
 
+const HIDDEN_MODIFIER_NAMES = new Set([
+  '1 tortilla',
+  '2 nd taco fish',
+  '2nd taco shrimp',
+  'a la diabla',
+  'add milanesa',
+  'add rice to burrito',
+  'al mojo de ajo',
+  'combinada',
+  'con cilantro',
+  'con papa',
+  'con pico',
+  'con queso',
+  'costumer 1',
+  'costumer 2',
+  'costumer 3',
+  'customer 1',
+  'customer 2',
+  'customer 3',
+  'extra arroz',
+]);
+
+const HIDDEN_MODIFIER_GROUP_RULES = [
+  { name: 'add fries', groups: ['kids menu'] },
+  { name: 'add meat', groups: ['kids menu'] },
+  { name: 'asada', groups: ['carnes'] },
+  { name: 'bean and cheese only', groups: ['fries modifiers'] },
+  { name: 'birria', groups: ['carnes'] },
+  { name: 'cabeza', groups: ['carnes'] },
+  { name: 'carnitas', groups: ['carnes'] },
+  { name: 'chicken', groups: ['carnes'] },
+  { name: 'chile relleno', groups: ['carnes'] },
+  { name: 'chile verde', groups: ['carnes'] },
+  { name: 'chorizo', groups: ['carnes'] },
+  { name: 'con cebolla', groups: ['kids menu modifier'] },
+  { name: 'extra 1 egg', groups: ['burrito modifier'] },
+  { name: 'extra 2 egg', groups: ['burrito modifier'] },
+  { name: 'extra cheese', groups: ['fries modifiers', 'kids menu modifier', 'nachos modifier', 'sopes modifier'] },
+  { name: 'extra frijol', groups: ['tacos no'] },
+  { name: 'extra meat', groups: ['fries modifiers'] },
+  { name: 'fries', groups: ['extras modifiers'] },
+  { name: 'green sauce', groups: ['kids menu modifier'] },
+  { name: 'grilled onions', groups: ['torta modifier'] },
+  { name: 'hardshell beef', groups: ['taco and enchilada mod'] },
+  { name: 'hardshell chicken', groups: ['taco and enchilada mod'] },
+  { name: 'hardshell potato', groups: ['taco and enchilada mod'] },
+  { name: 'harina', groups: ['marisco'] },
+  { name: 'kids al pastor taco', groups: ['kids menu modifier'] },
+  { name: 'kids asada taco', groups: ['kids menu modifier'] },
+  { name: 'kids birria taco', groups: ['kids menu modifier'] },
+  { name: 'kids carnitas taco', groups: ['kids menu modifier'] },
+  { name: 'kids chicken enchilada', groups: ['kids menu modifier'] },
+  { name: 'kids chicken taco', groups: ['kids menu modifier'] },
+  { name: 'ligth cheese', groups: ['quesadilla modifier'] },
+  { name: 'maiz', groups: ['marisco'] },
+  { name: 'no beans', groups: ['fries modifiers', 'kids menu modifier', 'kids modifier'] },
+  { name: 'no cabbage', groups: ['2 taco plate 2nd taco'] },
+  { name: 'no cheese', groups: ['fries modifiers', 'kids menu modifier', 'taco no'] },
+  { name: 'no chipoltle', groups: ['2 taco plate 2nd taco'] },
+  { name: 'no cila tro', groups: ['2 taco plate 2nd taco', 'taco no'] },
+  { name: 'no cilantro', groups: ['fries modifiers'] },
+  { name: 'no guacamole', groups: ['fries modifiers'] },
+  { name: 'no onion', groups: ['taco no'] },
+  { name: 'no onions', groups: ['fries modifiers'] },
+  { name: 'no pico', groups: ['2 taco plate 2nd taco', 'fries modifiers', 'taco no'] },
+  { name: 'no rice', groups: ['kids menu modifier', 'kids modifier'] },
+  { name: 'no salsa', groups: ['taco no'] },
+  { name: 'no sour cream', groups: ['fries modifiers'] },
+  { name: 'no tomato', groups: ['fries modifiers', 'taco no'] },
+  { name: 'no tortilla', groups: ['marisco', 'taco no'] },
+  { name: 'pastor', groups: ['carnes'] },
+  { name: 'plain', groups: ['kids menu modifier'] },
+  { name: 'red sauce', groups: ['kids menu modifier'] },
+  { name: 'res nachos', groups: ['meats'] },
+  { name: 'rice and beans plate', groups: ['burrito modifier'] },
+  { name: 'side of fries', groups: ['combo modifiers'] },
+  { name: 'solo carne fries queso y crema', groups: ['burrito modifier'] },
+];
+
 exports.handler = async function () {
   try {
     const merchantId = process.env.CLOVER_MERCHANT_ID;
@@ -110,7 +189,10 @@ function normalizeMenu({ categories, items, modifierGroups }) {
         .filter((group) => isOnlineEntityEnabled(group) && !isInternalHiddenModifierGroup(group))
         .map((group) => {
           const modifiers = (group.modifiers?.elements || [])
-            .filter((modifier) => isOnlineEntityEnabled(modifier))
+            .filter((modifier) =>
+              isOnlineEntityEnabled(modifier) &&
+              !isInternalHiddenModifier(modifier, group)
+            )
             .map((modifier) => {
               const modifierOnlineName = getOnlineName(modifier);
               const modifierCloverName = String(modifier.name || '').trim();
@@ -219,6 +301,29 @@ function normalizeOnlineName(value) {
     .replace(/&/g, 'and')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
+}
+
+
+function isInternalHiddenModifier(modifier, group) {
+  const modifierName = normalizeOnlineName(getOnlineName(modifier) || modifier?.name || '');
+  const groupName = normalizeOnlineName(getOnlineName(group) || group?.name || '');
+
+  if (!modifierName) return true;
+  if (/^-+$/.test(String(modifier?.name || '').replace(/\s+/g, ''))) return true;
+  if (!/[a-z0-9]/i.test(String(modifier?.name || ''))) return true;
+  if (modifierName.includes('refill')) return true;
+
+  if (HIDDEN_MODIFIER_NAMES.has(modifierName)) return true;
+
+  return HIDDEN_MODIFIER_GROUP_RULES.some((rule) => {
+    if (rule.name !== modifierName) return false;
+
+    return rule.groups.some((targetGroupName) =>
+      groupName === targetGroupName ||
+      groupName.includes(targetGroupName) ||
+      targetGroupName.includes(groupName)
+    );
+  });
 }
 
 function isInternalHiddenModifierGroup(group) {
