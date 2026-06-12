@@ -99,7 +99,7 @@ function normalizeMenu({ categories, items, modifierGroups }) {
   );
 
   const activeItems = items
-    .filter((item) => !item.hidden && item.available !== false)
+    .filter((item) => isOnlineEntityEnabled(item))
     .map((item) => {
       const itemCategoryIds = (item.categories?.elements || []).map(
         (cat) => cat.id
@@ -107,20 +107,36 @@ function normalizeMenu({ categories, items, modifierGroups }) {
 
       const itemModifierGroups = (item.modifierGroups?.elements || [])
         .map((groupRef) => modifierGroupMap.get(groupRef.id) || groupRef)
-        .map((group) => ({
-          id: group.id,
-          name: group.name,
-          minRequired: group.minRequired || 0,
-          maxAllowed: group.maxAllowed || null,
-          modifiers: (group.modifiers?.elements || []).map((modifier) => ({
-            id: modifier.id,
-            name: modifier.name,
-            price: modifier.price || 0
-          }))
-        }));
+        .filter((group) => isOnlineEntityEnabled(group))
+        .map((group) => {
+          const modifiers = (group.modifiers?.elements || [])
+            .filter((modifier) => isOnlineEntityEnabled(modifier))
+            .map((modifier) => {
+              const modifierOnlineName = getOnlineName(modifier);
+              const modifierCloverName = String(modifier.name || '').trim();
+
+              return {
+                id: modifier.id,
+                name: modifierOnlineName || modifierCloverName,
+                onlineName: modifierOnlineName,
+                cloverName: modifierCloverName,
+                price: modifier.price || 0
+              };
+            });
+
+          return {
+            id: group.id,
+            name: getOnlineName(group) || group.name,
+            cloverName: group.name || '',
+            minRequired: group.minRequired || 0,
+            maxAllowed: group.maxAllowed || null,
+            modifiers
+          };
+        })
+        .filter((group) => group.modifiers.length);
 
       const itemImage = getItemImage(item);
-      const onlineName = getItemOnlineName(item);
+      const onlineName = getOnlineName(item);
       const cloverName = String(item.name || '').trim();
       const displayName = onlineName || cloverName;
 
@@ -139,14 +155,23 @@ function normalizeMenu({ categories, items, modifierGroups }) {
       };
     });
 
-  const menuCategories = categories.map((category) => ({
-    id: category.id,
-    name: category.name,
-    sortOrder: category.sortOrder || 0,
-    items: activeItems
-      .filter((item) => item.categoryIds.includes(category.id))
-      .sort(compareMenuItems)
-  }));
+  const menuCategories = categories
+    .filter((category) => isOnlineEntityEnabled(category))
+    .map((category) => {
+      const onlineName = getOnlineName(category);
+      const cloverName = String(category.name || '').trim();
+
+      return {
+        id: category.id,
+        name: onlineName || cloverName,
+        onlineName,
+        cloverName,
+        sortOrder: category.sortOrder || 0,
+        items: activeItems
+          .filter((item) => item.categoryIds.includes(category.id))
+          .sort(compareMenuItems)
+      };
+    });
 
   const uncategorizedItems = activeItems
     .filter((item) => !item.categoryIds.length)
@@ -169,20 +194,55 @@ function normalizeMenu({ categories, items, modifierGroups }) {
   };
 }
 
-function getItemOnlineName(item) {
+function getOnlineName(entity) {
   const candidates = [
-    item.onlineName,
-    item.online_name,
-    item.onlineDisplayName,
-    item.onlineDisplayNameOverride,
-    item.menuName,
-    item.menu_name,
-    item.displayName,
-    item.alternateName
+    entity?.onlineName,
+    entity?.online_name,
+    entity?.onlineDisplayName,
+    entity?.onlineDisplayNameOverride,
+    entity?.onlineCategoryName,
+    entity?.onlineModifierGroupName,
+    entity?.onlineModifierName,
+    entity?.menuName,
+    entity?.menu_name,
+    entity?.displayName,
+    entity?.alternateName
   ];
 
   const value = candidates.find(candidate => typeof candidate === 'string' && candidate.trim());
   return value ? value.trim() : '';
+}
+
+function isOnlineEntityEnabled(entity) {
+  if (!entity) return false;
+
+  if (entity.deleted === true || entity.isDeleted === true) return false;
+  if (entity.hidden === true || entity.isHidden === true) return false;
+  if (entity.available === false || entity.inStock === false) return false;
+
+  const onlineFlags = [
+    entity.enabledOnline,
+    entity.showOnline,
+    entity.online,
+    entity.availableOnline,
+    entity.isAvailableOnline,
+    entity.visibleOnline,
+    entity.showInOnlineOrdering,
+    entity.onlineOrderingEnabled
+  ];
+
+  if (onlineFlags.some(value => value === false)) return false;
+
+  const hiddenOnlineFlags = [
+    entity.hiddenOnline,
+    entity.isHiddenOnline,
+    entity.hideOnline,
+    entity.hideInOnlineOrdering
+  ];
+
+  if (hiddenOnlineFlags.some(value => value === true)) return false;
+
+  return true;
 }
 
 function compareMenuItems(a, b) {
