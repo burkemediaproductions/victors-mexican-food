@@ -1232,6 +1232,41 @@ function getCartSubtotal() {
   return cart.reduce((total, item) => total + getCartItemUnitPrice(item) * item.quantity, 0);
 }
 
+function getCheckoutTotalsFromOrderResult(result) {
+  const subtotal = getCartSubtotal();
+  const rawTotals = result?.checkoutTotals || {};
+  const cloverOrder = result?.cloverOrder || {};
+  const cloverTotal = Number(rawTotals.total || cloverOrder.total || 0);
+  const total = cloverTotal > 0 ? cloverTotal : subtotal;
+  const tax = Math.max(0, Number(rawTotals.tax ?? (total - subtotal)) || 0);
+
+  return {
+    subtotal,
+    tax,
+    total
+  };
+}
+
+function normalizeCheckoutTotals(value) {
+  if (typeof value === 'number') {
+    return {
+      subtotal: value,
+      tax: 0,
+      total: value
+    };
+  }
+
+  const subtotal = Number(value?.subtotal || 0);
+  const total = Number(value?.total || subtotal);
+  const tax = Math.max(0, Number(value?.tax ?? (total - subtotal)) || 0);
+
+  return {
+    subtotal,
+    tax,
+    total
+  };
+}
+
 function renderCart() {
   if (!cartPanel) return;
 
@@ -1657,7 +1692,9 @@ function renderCheckout() {
       const fulfillment = await fetchOrderFulfillment(result.orderId);
       const pickupEstimate = resolvePickupEstimate(fulfillment);
 
-      renderPayment(result.orderId, getCartSubtotal(), pickupEstimate);
+      const checkoutTotals = getCheckoutTotalsFromOrderResult(result);
+
+      renderPayment(result.orderId, checkoutTotals, pickupEstimate);
     } catch (error) {
       alert(error.message);
       renderCart();
@@ -1671,13 +1708,19 @@ function renderPayment(orderId, amount, pickupEstimate = null) {
     return;
   }
 
+  const totals = normalizeCheckoutTotals(amount);
   const cfg = window.VICTORS_CONFIG || {};
 
   cartPanel.innerHTML = `
     <h3>Payment</h3>
     ${createPickupEstimateMarkup(pickupEstimate)}
     <p class="checkout-order-id">Order ID: <strong>${escapeHtml(orderId)}</strong></p>
-    <p>Total due: <strong>${formatMoney(amount)}</strong></p>
+
+    <div class="cart-summary">
+      <div><span>Subtotal</span><strong>${formatMoney(totals.subtotal)}</strong></div>
+      <div><span>Estimated Tax</span><strong>${formatMoney(totals.tax)}</strong></div>
+      <div><span>Total due</span><strong>${formatMoney(totals.total)}</strong></div>
+    </div>
 
     <form class="checkout-form" id="clover-payment-form">
       <label>
@@ -1707,7 +1750,7 @@ function renderPayment(orderId, amount, pickupEstimate = null) {
       <p class="ordering-state" data-payment-status></p>
 
       <button class="button order-button cart-checkout" type="submit">
-        Pay ${formatMoney(amount)}
+        Pay ${formatMoney(totals.total)}
       </button>
     </form>
   `;
@@ -1775,7 +1818,7 @@ function renderPayment(orderId, amount, pickupEstimate = null) {
       const paymentPayload = {
         orderId: orderId,
         source: source,
-        amount: Number(amount)
+        amount: Number(totals.total)
       };
 
       console.log('Sending payment payload:', paymentPayload);
@@ -1804,7 +1847,7 @@ function renderPayment(orderId, amount, pickupEstimate = null) {
     } catch (error) {
       status.textContent = error.message;
       button.disabled = false;
-      button.textContent = `Pay ${formatMoney(amount)}`;
+      button.textContent = `Pay ${formatMoney(totals.total)}`;
     }
   });
 }

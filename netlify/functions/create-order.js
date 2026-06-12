@@ -65,10 +65,22 @@ exports.handler = async function (event) {
       customerId: customerSync?.customer?.id
     });
 
+    const refreshedOrder = await getCloverOrder({
+      merchantId,
+      accessToken,
+      orderId: cloverResponse.id
+    });
+
+    const checkoutTotals = buildCheckoutTotals({
+      cart,
+      cloverOrder: refreshedOrder || cloverResponse
+    });
+
     return json(200, {
       success: true,
       orderId: cloverResponse.id,
-      cloverOrder: cloverResponse,
+      cloverOrder: refreshedOrder || cloverResponse,
+      checkoutTotals,
       customerSync,
       customerAttach
     });
@@ -335,17 +347,67 @@ async function attachCustomerToOrder({ merchantId, accessToken, orderId, custome
   }
 }
 
+async function getCloverOrder({ merchantId, accessToken, orderId }) {
+  if (!merchantId || !accessToken || !orderId) return null;
+
+  try {
+    return await cloverFetch(
+      `/v3/merchants/${merchantId}/orders/${encodeURIComponent(orderId)}?expand=lineItems`,
+      { method: 'GET' },
+      accessToken
+    );
+  } catch (error) {
+    return null;
+  }
+}
+
+function buildCheckoutTotals({ cart, cloverOrder }) {
+  const subtotal = calculateCartSubtotal(cart);
+  const total = Number(cloverOrder?.total || 0) || subtotal;
+  const tax = Math.max(0, total - subtotal);
+
+  return {
+    subtotal,
+    tax,
+    total
+  };
+}
+
+function calculateCartSubtotal(cart) {
+  if (!Array.isArray(cart)) return 0;
+
+  return cart.reduce((sum, cartItem) => {
+    const quantity = Number(cartItem.quantity || 1);
+    const basePrice = Number(cartItem.price || 0);
+    const modifierTotal = (Array.isArray(cartItem.modifiers) ? cartItem.modifiers : [])
+      .reduce((total, modifier) => total + Number(modifier.price || 0), 0);
+
+    return sum + ((basePrice + modifierTotal) * quantity);
+  }, 0);
+}
+
 function buildLineItem(cartItem) {
   const modifiers = Array.isArray(cartItem.modifiers) ? cartItem.modifiers : [];
 
   const noteParts = [
-    cartItem.note ? `Item note: ${cartItem.note}` : '',
-    modifiers.length ? `Modifiers: ${modifiers.map(modifier => modifier.name).filter(Boolean).join(', ')}` : ''
+    cartItem.note ? `Item note: ${cartItem.note}` : ''
   ].filter(Boolean);
 
   const lineItem = {
     item: { id: cartItem.id }
   };
+
+  const modifications = modifiers
+    .filter(modifier => modifier && modifier.id)
+    .map(modifier => ({
+      modifier: {
+        id: modifier.id
+      }
+    }));
+
+  if (modifications.length) {
+    lineItem.modifications = modifications;
+  }
 
   if (noteParts.length) {
     lineItem.note = noteParts.join('\n');
