@@ -35,6 +35,8 @@ exports.handler = async function (event) {
       email
     });
 
+    const expandedCartItems = expandCartItems(cart);
+
     const orderCart = {
       title: `Website Order - ${customerName || 'Guest'}`,
       note: buildOrderNote({
@@ -44,9 +46,7 @@ exports.handler = async function (event) {
         orderNotes,
         customerSync
       }),
-      lineItems: cart.flatMap((cartItem) => {
-        return Array.from({ length: cartItem.quantity || 1 }).map(() => buildLineItem(cartItem));
-      })
+      lineItems: expandedCartItems.map((cartItem) => buildLineItem(cartItem))
     };
 
     const cloverResponse = await cloverFetch(
@@ -57,6 +57,13 @@ exports.handler = async function (event) {
       },
       accessToken
     );
+
+    const modificationSync = await applyOrderModifications({
+      merchantId,
+      accessToken,
+      orderId: cloverResponse.id,
+      expandedCartItems
+    });
 
     const customerAttach = await attachCustomerToOrder({
       merchantId,
@@ -82,7 +89,8 @@ exports.handler = async function (event) {
       cloverOrder: refreshedOrder || cloverResponse,
       checkoutTotals,
       customerSync,
-      customerAttach
+      customerAttach,
+      modificationSync
     });
   } catch (error) {
     return json(500, {
@@ -363,14 +371,32 @@ async function getCloverOrder({ merchantId, accessToken, orderId }) {
 
 function buildCheckoutTotals({ cart, cloverOrder }) {
   const subtotal = calculateCartSubtotal(cart);
-  const total = Number(cloverOrder?.total || 0) || subtotal;
-  const tax = Math.max(0, total - subtotal);
+  const cloverTotal = Number(cloverOrder?.total || 0);
+  let tax = Math.max(0, cloverTotal - subtotal);
+  let total = cloverTotal > subtotal ? cloverTotal : subtotal + tax;
+
+  // Clover sometimes returns a total that does not include tax after modifiers are attached
+  // to existing line items. In that edge case, use Victor's configured estimated tax rate
+  // so customers are not undercharged at checkout.
+  if (subtotal > 0 && tax <= 0) {
+    tax = estimateTaxFromSubtotal(subtotal);
+    total = subtotal + tax;
+  }
 
   return {
     subtotal,
     tax,
     total
   };
+}
+
+function getConfiguredSalesTaxRate() {
+  const value = Number(process.env.SALES_TAX_RATE || process.env.CLOVER_SALES_TAX_RATE || 0.0875);
+  return Number.isFinite(value) && value > 0 ? value : 0.0875;
+}
+
+function estimateTaxFromSubtotal(subtotal) {
+  return Math.round(Number(subtotal || 0) * getConfiguredSalesTaxRate());
 }
 
 function calculateCartSubtotal(cart) {
@@ -386,9 +412,87 @@ function calculateCartSubtotal(cart) {
   }, 0);
 }
 
-function buildLineItem(cartItem) {
-  const modifiers = Array.isArray(cartItem.modifiers) ? cartItem.modifiers : [];
+function expandCartItems(cart) {
+  if (!Array.isArray(cart)) return [];
 
+  return cart.flatMap((cartItem) => {
+    const quantity = Math.max(1, Number(cartItem.quantity || 1));
+
+    return Array.from({ length: quantity }).map(() => ({
+      ...cartItem,
+      quantity: 1
+    }));
+  });
+}
+
+async function applyOrderModifications({ merchantId, accessToken, orderId, expandedCartItems }) {
+  const itemsWithModifiers = expandedCartItems
+    .map((cartItem, index) => ({
+      cartItem,
+      index,
+      modifiers: Array.isArray(cartItem.modifiers) ? cartItem.modifiers.filter(modifier => modifier && modifier.id) : []
+    }))
+    .filter(entry => entry.modifiers.length);
+
+  if (!itemsWithModifiers.length) {
+    return {
+      success: true,
+      skipped: true,
+      reason: 'No modifiers selected'
+    };
+  }
+
+  const order = await getCloverOrder({
+    merchantId,
+    accessToken,
+    orderId
+  });
+
+  const lineItems = order?.lineItems?.elements || [];
+
+  if (lineItems.length < expandedCartItems.length) {
+    throw new Error(`Clover order returned ${lineItems.length} line item(s), expected ${expandedCartItems.length}. Unable to attach modifiers safely.`);
+  }
+
+  const applied = [];
+
+  for (const entry of itemsWithModifiers) {
+    const lineItem = lineItems[entry.index];
+
+    if (!lineItem?.id) {
+      throw new Error(`Missing Clover line item for cart item ${entry.cartItem.name || entry.cartItem.id}.`);
+    }
+
+    for (const modifier of entry.modifiers) {
+      const result = await cloverFetch(
+        `/v3/merchants/${merchantId}/orders/${encodeURIComponent(orderId)}/line_items/${encodeURIComponent(lineItem.id)}/modifications`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            modifier: {
+              id: modifier.id
+            }
+          })
+        },
+        accessToken
+      );
+
+      applied.push({
+        lineItemId: lineItem.id,
+        modifierId: modifier.id,
+        modificationId: result.id || ''
+      });
+    }
+  }
+
+  return {
+    success: true,
+    count: applied.length,
+    applied
+  };
+}
+
+function buildLineItem(cartItem) {
   const noteParts = [
     cartItem.note ? `Item note: ${cartItem.note}` : ''
   ].filter(Boolean);
@@ -396,18 +500,6 @@ function buildLineItem(cartItem) {
   const lineItem = {
     item: { id: cartItem.id }
   };
-
-  const modifications = modifiers
-    .filter(modifier => modifier && modifier.id)
-    .map(modifier => ({
-      modifier: {
-        id: modifier.id
-      }
-    }));
-
-  if (modifications.length) {
-    lineItem.modifications = modifications;
-  }
 
   if (noteParts.length) {
     lineItem.note = noteParts.join('\n');

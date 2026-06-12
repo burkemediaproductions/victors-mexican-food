@@ -1,6 +1,8 @@
 const MENU_ENDPOINT = '/.netlify/functions/menu';
 const ORDER_FULFILLMENT_ENDPOINT = '/.netlify/functions/order-fulfillment';
 const CART_STORAGE_KEY = 'victors-order-cart-v1';
+const CHECKOUT_SESSION_STORAGE_KEY = 'victors-checkout-session-v1';
+const CHECKOUT_SESSION_TTL_MS = 4 * 60 * 60 * 1000;
 
 const categoryContainer = document.querySelector('[data-menu-categories]');
 const itemsContainer = document.querySelector('[data-menu-items]');
@@ -38,6 +40,7 @@ const MOBILE_NAV_QUERY = '(max-width: 980px)';
 
 let menuData = null;
 let cart = loadSavedCart();
+let checkoutSession = loadCheckoutSession();
 let activeCategoryIndex = -1;
 let searchTerm = '';
 let featuredCategoryIndexes = [];
@@ -87,7 +90,19 @@ async function loadMenu() {
 
     renderCategories();
     renderItems(menuData.categories[activeCategoryIndex]);
-    renderCart();
+
+    if (checkoutSession?.step === 'payment') {
+      renderPayment(
+        checkoutSession.orderId,
+        checkoutSession.totals,
+        checkoutSession.pickupEstimate,
+        { restoring: true }
+      );
+    } else if (checkoutSession?.step === 'paid') {
+      renderPaidOrder(checkoutSession, { restoring: true });
+    } else {
+      renderCart();
+    }
   } catch (err) {
     console.error('Menu load failed', err);
     categoryContainer.innerHTML = '';
@@ -809,6 +824,18 @@ function getCartLineKey(itemId, modifiers = [], note = '') {
   return `${itemId}::${modifierKey}::${String(note || '').trim()}`;
 }
 
+function getUniqueCartLineKey(itemId, modifiers = [], note = '') {
+  return `${getCartLineKey(itemId, modifiers, note)}::line-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function shouldCreateSeparateCartLine(item, modifiers = [], note = '') {
+  const hasModifierGroups = getItemModifierGroups(item).length > 0;
+  const hasSelectedModifiers = Array.isArray(modifiers) && modifiers.length > 0;
+  const hasNote = Boolean(String(note || '').trim());
+
+  return hasModifierGroups || hasSelectedModifiers || hasNote;
+}
+
 function getCartItemUnitPrice(item) {
   const modifierTotal = (Array.isArray(item.modifiers) ? item.modifiers : [])
     .reduce((total, modifier) => total + Number(modifier.price || 0), 0);
@@ -1042,6 +1069,8 @@ function getSelectedModifiersFromForm(form, modifierGroups) {
 }
 
 function addToCart(item, modifiers = [], note = '') {
+  clearCheckoutSession();
+
   if (!orderingAvailable) {
     renderCart();
     return;
@@ -1049,8 +1078,11 @@ function addToCart(item, modifiers = [], note = '') {
 
   const normalizedModifiers = Array.isArray(modifiers) ? modifiers : [];
   const normalizedNote = String(note || '').trim();
-  const lineId = getCartLineKey(item.id, normalizedModifiers, normalizedNote);
-  const existing = cart.find(cartItem => cartItem.lineId === lineId);
+  const separateLine = shouldCreateSeparateCartLine(item, normalizedModifiers, normalizedNote);
+  const lineId = separateLine
+    ? getUniqueCartLineKey(item.id, normalizedModifiers, normalizedNote)
+    : getCartLineKey(item.id, normalizedModifiers, normalizedNote);
+  const existing = separateLine ? null : cart.find(cartItem => cartItem.lineId === lineId);
 
   if (existing) {
     existing.quantity += 1;
@@ -1127,35 +1159,27 @@ function startEditCartItem(lineId) {
 }
 
 function updateCartItemOptions(lineId, sourceItem, modifiers = [], note = '') {
+  clearCheckoutSession();
+
   const currentIndex = cart.findIndex(item => (item.lineId || item.id) === lineId);
   if (currentIndex < 0) return;
 
   const currentItem = cart[currentIndex];
   const normalizedModifiers = Array.isArray(modifiers) ? modifiers : [];
   const normalizedNote = String(note || '').trim();
-  const nextLineId = getCartLineKey(currentItem.id, normalizedModifiers, normalizedNote);
 
-  const existingIndex = cart.findIndex((item, index) =>
-    index !== currentIndex && (item.lineId || item.id) === nextLineId
-  );
-
-  if (existingIndex >= 0) {
-    cart[existingIndex].quantity += currentItem.quantity;
-    cart.splice(currentIndex, 1);
-  } else {
-    cart[currentIndex] = {
-      ...currentItem,
-      lineId: nextLineId,
-      name: getItemDisplayName(sourceItem) || currentItem.name,
-      onlineName: sourceItem.onlineName || currentItem.onlineName || '',
-      cloverName: sourceItem.cloverName || currentItem.cloverName || currentItem.name || '',
-      price: Number(sourceItem.price ?? currentItem.price ?? 0),
-      priceFormatted: sourceItem.priceFormatted || currentItem.priceFormatted,
-      imageUrl: sourceItem.imageUrl || currentItem.imageUrl || '',
-      modifiers: normalizedModifiers,
-      note: normalizedNote
-    };
-  }
+  cart[currentIndex] = {
+    ...currentItem,
+    lineId: currentItem.lineId || getUniqueCartLineKey(currentItem.id, normalizedModifiers, normalizedNote),
+    name: getItemDisplayName(sourceItem) || currentItem.name,
+    onlineName: sourceItem.onlineName || currentItem.onlineName || '',
+    cloverName: sourceItem.cloverName || currentItem.cloverName || currentItem.name || '',
+    price: Number(sourceItem.price ?? currentItem.price ?? 0),
+    priceFormatted: sourceItem.priceFormatted || currentItem.priceFormatted,
+    imageUrl: sourceItem.imageUrl || currentItem.imageUrl || '',
+    modifiers: normalizedModifiers,
+    note: normalizedNote
+  };
 
   saveCart();
   renderCart();
@@ -1163,6 +1187,8 @@ function updateCartItemOptions(lineId, sourceItem, modifiers = [], note = '') {
 }
 
 function updateQuantity(lineId, quantity) {
+  clearCheckoutSession();
+
   if (!orderingAvailable) return;
 
   cart = cart
@@ -1174,6 +1200,8 @@ function updateQuantity(lineId, quantity) {
 }
 
 function removeFromCart(lineId) {
+  clearCheckoutSession();
+
   cart = cart.filter(item => item.lineId !== lineId);
   saveCart();
   renderCart();
@@ -1232,13 +1260,28 @@ function getCartSubtotal() {
   return cart.reduce((total, item) => total + getCartItemUnitPrice(item) * item.quantity, 0);
 }
 
+function getConfiguredSalesTaxRate() {
+  const cfg = window.VICTORS_CONFIG || {};
+  const value = Number(cfg.salesTaxRate ?? cfg.taxRate ?? 0.0875);
+  return Number.isFinite(value) && value > 0 ? value : 0.0875;
+}
+
+function estimateTaxFromSubtotal(subtotal) {
+  return Math.round(Number(subtotal || 0) * getConfiguredSalesTaxRate());
+}
+
 function getCheckoutTotalsFromOrderResult(result) {
   const subtotal = getCartSubtotal();
   const rawTotals = result?.checkoutTotals || {};
   const cloverOrder = result?.cloverOrder || {};
   const cloverTotal = Number(rawTotals.total || cloverOrder.total || 0);
-  const total = cloverTotal > 0 ? cloverTotal : subtotal;
-  const tax = Math.max(0, Number(rawTotals.tax ?? (total - subtotal)) || 0);
+  let tax = Math.max(0, Number(rawTotals.tax ?? (cloverTotal - subtotal)) || 0);
+  let total = cloverTotal > subtotal ? cloverTotal : subtotal + tax;
+
+  if (subtotal > 0 && tax <= 0) {
+    tax = estimateTaxFromSubtotal(subtotal);
+    total = subtotal + tax;
+  }
 
   return {
     subtotal,
@@ -1249,16 +1292,27 @@ function getCheckoutTotalsFromOrderResult(result) {
 
 function normalizeCheckoutTotals(value) {
   if (typeof value === 'number') {
+    const subtotal = Number(value || 0);
+    const tax = estimateTaxFromSubtotal(subtotal);
+
     return {
-      subtotal: value,
-      tax: 0,
-      total: value
+      subtotal,
+      tax,
+      total: subtotal + tax
     };
   }
 
   const subtotal = Number(value?.subtotal || 0);
-  const total = Number(value?.total || subtotal);
-  const tax = Math.max(0, Number(value?.tax ?? (total - subtotal)) || 0);
+  let tax = Math.max(0, Number(value?.tax ?? 0) || 0);
+  let total = Number(value?.total || 0);
+
+  if (subtotal > 0 && tax <= 0) {
+    tax = estimateTaxFromSubtotal(subtotal);
+  }
+
+  if (!total || total <= subtotal) {
+    total = subtotal + tax;
+  }
 
   return {
     subtotal,
@@ -1281,7 +1335,7 @@ function createTipOptionsMarkup(totals) {
   return `
     <div class="tip-section" data-tip-section>
       <p class="tip-section-title">Leave a tip</p>
-      <div class="tip-options">
+      <div class="tip-options" role="group" aria-label="Choose tip amount">
         <button class="tip-option active" type="button" data-tip-option="0">
           <span>None</span>
         </button>
@@ -1294,8 +1348,16 @@ function createTipOptionsMarkup(totals) {
             </button>
           `;
         }).join('')}
+        <button class="tip-option tip-option-custom" type="button" data-tip-custom-toggle aria-expanded="false">
+          <span>Other</span>
+          <strong>Custom</strong>
+        </button>
       </div>
-      <button class="tip-custom" type="button" data-tip-custom>Custom tip amount +</button>
+
+      <label class="tip-custom-field" data-tip-custom-field hidden>
+        <span>Custom tip amount</span>
+        <input type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" data-tip-custom-input>
+      </label>
     </div>
   `;
 }
@@ -1309,6 +1371,76 @@ function updatePaymentTotalsDisplay(form, totals, tipAmount) {
   if (tipNode) tipNode.textContent = formatMoney(tipAmount);
   if (totalNode) totalNode.textContent = formatMoney(grandTotal);
   if (payButton) payButton.textContent = `Pay ${formatMoney(grandTotal)}`;
+}
+
+function loadCheckoutSession() {
+  try {
+    const saved = window.localStorage?.getItem(CHECKOUT_SESSION_STORAGE_KEY);
+    if (!saved) return null;
+
+    const session = JSON.parse(saved);
+    const createdAt = Number(session?.createdAt || 0);
+
+    if (!session?.orderId || !createdAt || Date.now() - createdAt > CHECKOUT_SESSION_TTL_MS) {
+      window.localStorage?.removeItem(CHECKOUT_SESSION_STORAGE_KEY);
+      return null;
+    }
+
+    return session;
+  } catch (error) {
+    console.warn('Unable to restore checkout session', error);
+    return null;
+  }
+}
+
+function saveCheckoutSession(session) {
+  checkoutSession = {
+    ...session,
+    createdAt: session?.createdAt || Date.now()
+  };
+
+  try {
+    window.localStorage?.setItem(CHECKOUT_SESSION_STORAGE_KEY, JSON.stringify(checkoutSession));
+  } catch (error) {
+    console.warn('Unable to save checkout session', error);
+  }
+}
+
+function clearCheckoutSession() {
+  checkoutSession = null;
+
+  try {
+    window.localStorage?.removeItem(CHECKOUT_SESSION_STORAGE_KEY);
+  } catch (error) {
+    console.warn('Unable to clear checkout session', error);
+  }
+}
+
+function resetCheckoutAndCart() {
+  clearSavedCart();
+  clearCheckoutSession();
+  renderCart();
+  renderMobileCartDock();
+}
+
+function renderPaidOrder(session, options = {}) {
+  cartPanel.innerHTML = `
+    <h3>Order Confirmed</h3>
+    <p>Thank you! Your order has been paid successfully.</p>
+    ${createPickupEstimateMarkup(session.pickupEstimate)}
+    <p><strong>Order ID:</strong> ${escapeHtml(session.orderId)}</p>
+    <p class="cart-empty cart-empty-secondary">This confirmation will stay here for a few hours on this device.</p>
+    <button class="button order-button cart-checkout" type="button" data-new-order>
+      Start New Order
+    </button>
+  `;
+
+  cartPanel.querySelector('[data-new-order]')?.addEventListener('click', resetCheckoutAndCart);
+  renderMobileCartDock();
+
+  if (!options.restoring) {
+    scrollCartPanelIntoView();
+  }
 }
 
 function renderCart() {
@@ -1428,7 +1560,7 @@ function ensureMobileCartDock() {
 
 function renderMobileCartDock() {
   const dock = ensureMobileCartDock();
-  const showDock = orderingAvailable && cart.length > 0 && getNavMode() === 'mobile';
+  const showDock = orderingAvailable && cart.length > 0 && getNavMode() === 'mobile' && !checkoutSession;
 
   document.body.classList.toggle('has-mobile-cart-dock', showDock);
 
@@ -1669,6 +1801,8 @@ function createPickupEstimateMarkup(estimate) {
 }
 
 function renderCheckout() {
+  clearCheckoutSession();
+
   if (!orderingAvailable) {
     renderCart();
     return;
@@ -1760,6 +1894,17 @@ function renderCheckout() {
 
       const checkoutTotals = getCheckoutTotalsFromOrderResult(result);
 
+      saveCheckoutSession({
+        step: 'payment',
+        orderId: result.orderId,
+        totals: checkoutTotals,
+        pickupEstimate,
+        cartSnapshot: cart,
+        customerName: checkoutData.customerName,
+        phone: checkoutData.phone,
+        email: checkoutData.email
+      });
+
       renderPayment(result.orderId, checkoutTotals, pickupEstimate);
     } catch (error) {
       alert(getFriendlyCheckoutError(error));
@@ -1768,13 +1913,24 @@ function renderCheckout() {
   });
 }
 
-function renderPayment(orderId, amount, pickupEstimate = null) {
+function renderPayment(orderId, amount, pickupEstimate = null, options = {}) {
   if (!orderingAvailable) {
     renderCart();
     return;
   }
 
   const totals = normalizeCheckoutTotals(amount);
+
+  if (!options.restoring) {
+    saveCheckoutSession({
+      step: 'payment',
+      orderId,
+      totals,
+      pickupEstimate,
+      cartSnapshot: cart
+    });
+  }
+
   const cfg = window.VICTORS_CONFIG || {};
 
   cartPanel.innerHTML = `
@@ -1857,33 +2013,56 @@ function renderPayment(orderId, amount, pickupEstimate = null) {
   const status = cartPanel.querySelector('[data-payment-status]');
   let selectedTipAmount = 0;
 
+  const customTipToggle = cartPanel.querySelector('[data-tip-custom-toggle]');
+  const customTipField = cartPanel.querySelector('[data-tip-custom-field]');
+  const customTipInput = cartPanel.querySelector('[data-tip-custom-input]');
+
+  function closeCustomTipField() {
+    if (customTipField) customTipField.hidden = true;
+    if (customTipToggle) customTipToggle.setAttribute('aria-expanded', 'false');
+  }
+
+  function openCustomTipField() {
+    if (customTipField) customTipField.hidden = false;
+    if (customTipToggle) customTipToggle.setAttribute('aria-expanded', 'true');
+    customTipInput?.focus({ preventScroll: true });
+  }
+
   cartPanel.querySelectorAll('[data-tip-option]').forEach(button => {
     button.addEventListener('click', () => {
       selectedTipAmount = Math.max(0, Number(button.dataset.tipOption || 0) || 0);
 
-      cartPanel.querySelectorAll('[data-tip-option]').forEach(option => {
+      cartPanel.querySelectorAll('.tip-option').forEach(option => {
         option.classList.toggle('active', option === button);
       });
 
+      closeCustomTipField();
       updatePaymentTotalsDisplay(form, totals, selectedTipAmount);
     });
   });
 
-  cartPanel.querySelector('[data-tip-custom]')?.addEventListener('click', () => {
-    const value = window.prompt('Enter custom tip amount', '0.00');
-    if (value === null) return;
-
-    const dollars = Number(String(value).replace(/[^0-9.]/g, ''));
-    if (!Number.isFinite(dollars) || dollars < 0) {
-      status.textContent = 'Please enter a valid tip amount.';
-      return;
-    }
-
-    selectedTipAmount = Math.round(dollars * 100);
-
-    cartPanel.querySelectorAll('[data-tip-option]').forEach(option => {
-      option.classList.remove('active');
+  customTipToggle?.addEventListener('click', () => {
+    cartPanel.querySelectorAll('.tip-option').forEach(option => {
+      option.classList.toggle('active', option === customTipToggle);
     });
+
+    openCustomTipField();
+
+    const dollars = Number(String(customTipInput?.value || '').replace(/[^0-9.]/g, ''));
+    selectedTipAmount = Number.isFinite(dollars) && dollars > 0 ? Math.round(dollars * 100) : 0;
+    updatePaymentTotalsDisplay(form, totals, selectedTipAmount);
+  });
+
+  customTipInput?.addEventListener('input', () => {
+    const dollars = Number(String(customTipInput.value || '').replace(/[^0-9.]/g, ''));
+
+    if (!Number.isFinite(dollars) || dollars < 0) {
+      selectedTipAmount = 0;
+      status.textContent = 'Please enter a valid tip amount.';
+    } else {
+      selectedTipAmount = Math.round(dollars * 100);
+      status.textContent = '';
+    }
 
     updatePaymentTotalsDisplay(form, totals, selectedTipAmount);
   });
@@ -1941,13 +2120,18 @@ function renderPayment(orderId, amount, pickupEstimate = null) {
 
       clearSavedCart();
 
-      cartPanel.innerHTML = `
-        <h3>Payment Received</h3>
-        <p>Thank you! Your order has been paid successfully.</p>
-        ${createPickupEstimateMarkup(pickupEstimate)}
-        <p><strong>Order ID:</strong> ${escapeHtml(orderId)}</p>
-      `;
-      renderMobileCartDock();
+      const paidSession = {
+        step: 'paid',
+        orderId,
+        totals,
+        pickupEstimate,
+        tipAmount: selectedTipAmount,
+        paidAt: Date.now(),
+        createdAt: checkoutSession?.createdAt || Date.now()
+      };
+
+      saveCheckoutSession(paidSession);
+      renderPaidOrder(paidSession);
     } catch (error) {
       status.textContent = getFriendlyCheckoutError(error);
       button.disabled = false;

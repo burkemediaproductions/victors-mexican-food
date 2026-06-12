@@ -4602,3 +4602,129 @@ body.modifier-dialog-open {
   transform: translateY(-1px);
 }
 
+/* Checkout tip selector polish */
+.tip-section {
+  margin: 1rem 0 1.15rem;
+  padding: 1rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(12,122,67,.08), rgba(210,168,87,.13));
+  border: 1px solid rgba(29,20,15,.08);
+}
+
+.tip-section-title {
+  margin: 0 0 .75rem;
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.tip-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: .55rem;
+}
+
+.tip-option {
+  min-height: 56px;
+  border: 1.5px solid rgba(29,20,15,.14);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  gap: .1rem;
+  padding: .55rem .45rem;
+  font-weight: 900;
+  line-height: 1.05;
+  transition: transform .2s ease, background .2s ease, color .2s ease, border-color .2s ease;
+}
+
+.tip-option span,
+.tip-option strong {
+  display: block;
+}
+
+.tip-option strong {
+  font-size: .9rem;
+}
+
+.tip-option:hover,
+.tip-option:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(12,122,67,.35);
+}
+
+.tip-option.active {
+  background: linear-gradient(135deg, var(--green), var(--green-deep));
+  border-color: transparent;
+  color: #fff;
+}
+
+.tip-option-custom {
+  background: linear-gradient(135deg, rgba(255,255,255,.95), rgba(251,246,239,.95));
+}
+
+.tip-custom-field {
+  margin-top: .85rem;
+  display: grid;
+  gap: .4rem;
+  font-weight: 900;
+}
+
+.tip-custom-field[hidden] {
+  display: none;
+}
+
+.tip-custom-field input {
+  width: 100%;
+  border: 1.5px solid rgba(12,122,67,.28);
+  border-radius: 16px;
+  background: #fff;
+  padding: .9rem 1rem;
+  font-weight: 900;
+}
+
+@media (max-width: 720px) {
+  .tip-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tip-option {
+    min-height: 58px;
+  }
+}
+
+/* Tip buttons: consistent two-column payment layout */
+.cart-panel .tip-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.cart-panel .tip-option {
+  width: 100%;
+  min-height: 72px;
+  border-radius: 18px;
+  text-align: center;
+  white-space: normal;
+}
+
+.cart-panel .tip-option span,
+.cart-panel .tip-option strong {
+  line-height: 1.1;
+}
+
+.cart-panel .tip-option-custom {
+  grid-column: auto;
+}
+
+@media (min-width: 981px) {
+  .cart-panel .tip-section {
+    padding: 1.15rem;
+  }
+
+  .cart-panel .tip-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+

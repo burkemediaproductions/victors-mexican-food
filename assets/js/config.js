@@ -11,5 +11,6 @@ window.VICTORS_CONFIG = {
   cloverMerchantId: '7SG7MZF7BPX21',
   cloverPublicKey: '726f7a89364f8b36f7a887c5ec5b3a32',
   pickupPrepMinutes: 15,
-  pickupEstimateFallbackEnabled: true
+  pickupEstimateFallbackEnabled: true,
+  salesTaxRate: 0.0875
 };
