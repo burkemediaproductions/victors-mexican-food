@@ -107,7 +107,7 @@ function normalizeMenu({ categories, items, modifierGroups }) {
 
       const itemModifierGroups = (item.modifierGroups?.elements || [])
         .map((groupRef) => modifierGroupMap.get(groupRef.id) || groupRef)
-        .filter((group) => isOnlineEntityEnabled(group))
+        .filter((group) => isOnlineEntityEnabled(group) && !isInternalHiddenModifierGroup(group))
         .map((group) => {
           const modifiers = (group.modifiers?.elements || [])
             .filter((modifier) => isOnlineEntityEnabled(modifier))
@@ -211,6 +211,23 @@ function getOnlineName(entity) {
 
   const value = candidates.find(candidate => typeof candidate === 'string' && candidate.trim());
   return value ? value.trim() : '';
+}
+
+function normalizeOnlineName(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function isInternalHiddenModifierGroup(group) {
+  const name = normalizeOnlineName(getOnlineName(group) || group?.name || '');
+
+  // Clover's online menu hides internal "No" groups when their options are not set to show online.
+  // The API response we receive does not always expose that per-option online flag, so this mirrors
+  // Clover Online Ordering for groups like "Taco No" while still allowing normal groups like "Taco Modifier".
+  return /\bno$/.test(name);
 }
 
 function isOnlineEntityEnabled(entity) {
