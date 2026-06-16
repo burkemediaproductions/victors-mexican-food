@@ -231,7 +231,7 @@ function renderStaticMenuSection(menu, options) {
   if (!menu?.categories?.length) {
     return `<section class="section white static-menu-seo divider" aria-labelledby="static-menu-heading">
 <div class="container">
-<div class="section-top" data-reveal="">
+<div class="section-top">
 <div><span class="eyebrow">${escapeHtml(options.staticEyebrow)}</span><h2 class="section-title" id="static-menu-heading">${escapeHtml(options.emptyHeading)}</h2></div>
 <p class="section-intro">${escapeHtml(options.emptyText)}</p>
 </div>
@@ -246,13 +246,13 @@ function renderStaticMenuSection(menu, options) {
 
   return `<section class="section white static-menu-seo divider" aria-labelledby="static-menu-heading">
 <div class="container">
-<div class="section-top" data-reveal="">
+<div class="section-top">
 <div><span class="eyebrow">${escapeHtml(options.staticEyebrow)}</span><h2 class="section-title" id="static-menu-heading">${escapeHtml(options.staticHeading)}</h2></div>
 <p class="section-intro">${escapeHtml(options.staticIntro)}</p>
 </div>
 ${updatedHtml}
 <p><a class="button red-button" href="${options.liveMenuPath}#ordering">${escapeHtml(options.liveLinkText)}</a></p>
-<div class="static-menu-sections" data-reveal="">
+<div class="static-menu-sections">
 ${categoryHtml}
 </div>
 </div>
