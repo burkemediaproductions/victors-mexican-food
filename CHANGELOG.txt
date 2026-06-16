@@ -1,0 +1,18 @@
+Victor's Mexican Food SEO/AIO patch
+
+Included changes:
+- Updated English title tags and meta descriptions for local search intent.
+- Updated Spanish title tags, meta descriptions, Open Graph descriptions, Twitter descriptions, canonical URLs, and hreflang alternates.
+- Corrected Spanish hreflang pairs so Spanish pages point to their matching English URLs and vice versa.
+- Expanded Restaurant JSON-LD with hasMap, menu/hasMenu, acceptsReservations, paymentAccepted, areaServed, and consistent Monday-Saturday hours.
+- Updated WebPage JSON-LD names/descriptions/language.
+- Added BreadcrumbList schema to interior pages.
+- Added light local SEO/AIO copy to the Menu and Visit pages in English and Spanish.
+- Reordered _redirects so specific Spanish redirects run before catch-all 404 rules.
+- Rebuilt sitemap.xml with final canonical URLs and removed 404.
+- Added llms.txt.
+
+Skipped for this pass per request:
+- Static crawlable menu item snapshot.
+- Menu/MenuSection/MenuItem schema.
+- Image compression/conversion.
