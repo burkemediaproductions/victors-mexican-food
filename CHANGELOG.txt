@@ -1,0 +1,20 @@
+Victor's Mexican Food - Full Menu Link + Natural Static Menu Copy Patch
+
+This patch updates the dedicated full-menu SEO/AIO page setup.
+
+Changes:
+- Added a small bottom-of-menu link on /menu/ that says: Browse Our Menu.
+- Added a matching Spanish link on /es/menu/ that says: Explora Nuestro Menú.
+- Removed older wording like "View crawlable menu" / "Ver menú rastreable" from the visible pages.
+- Updated /full-menu/ to read like a normal customer-facing full menu page.
+- Updated /es/menu-completo/ to read like a natural Spanish customer-facing full menu page.
+- Removed visible customer-facing wording that mentioned Clover, crawlable, static SEO, or menu snapshots from the full menu pages.
+- Updated the generator script so future daily rebuilds keep the same wording and link placement.
+- Updated full-menu WebPage/Breadcrumb JSON-LD to point to /full-menu/ and /es/menu-completo/ instead of the live ordering URLs.
+
+Site behavior:
+- /menu/ remains the live online ordering menu.
+- /es/menu/ remains the Spanish live online ordering menu.
+- /full-menu/ is the English plain full menu page for users, SEO, and AIO.
+- /es/menu-completo/ is the Spanish plain full menu page for users, SEO, and AIO.
+- Clover remains the source of truth behind the generated menu data, but the public-facing wording does not mention Clover.
