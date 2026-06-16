@@ -1,5 +1,9 @@
 [build]
 publish = "."
+command = "node scripts/generate-static-menu.js"
+
+[functions."rebuild-menu"]
+schedule = "@daily"
 
 [[redirects]]
 from = "/*"
