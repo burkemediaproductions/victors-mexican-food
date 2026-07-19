@@ -2,6 +2,8 @@ const CLOVER_API_BASE =
   process.env.CLOVER_ENV === 'sandbox'
     ? 'https://apisandbox.dev.clover.com'
     : 'https://api.clover.com';
+const { getOrderingAvailability } = require('./ordering-availability');
+const { buildAuthoritativeTotals } = require('./checkout-pricing');
 
 exports.handler = async function (event) {
   if (event.httpMethod !== 'POST') {
@@ -9,6 +11,14 @@ exports.handler = async function (event) {
   }
 
   try {
+    const availability = getOrderingAvailability();
+    if (!availability.orderingAvailable) {
+      return json(403, {
+        error: 'Online ordering is closed',
+        message: availability.orderingMessage
+      });
+    }
+
     const merchantId = process.env.CLOVER_MERCHANT_ID;
     const accessToken = process.env.CLOVER_ACCESS_TOKEN;
 
@@ -360,7 +370,7 @@ async function getCloverOrder({ merchantId, accessToken, orderId }) {
 
   try {
     return await cloverFetch(
-      `/v3/merchants/${merchantId}/orders/${encodeURIComponent(orderId)}?expand=lineItems`,
+      `/v3/merchants/${merchantId}/orders/${encodeURIComponent(orderId)}?expand=lineItems.modifications`,
       { method: 'GET' },
       accessToken
     );
@@ -370,24 +380,11 @@ async function getCloverOrder({ merchantId, accessToken, orderId }) {
 }
 
 function buildCheckoutTotals({ cart, cloverOrder }) {
-  const subtotal = calculateCartSubtotal(cart);
-  const cloverTotal = Number(cloverOrder?.total || 0);
-  let tax = Math.max(0, cloverTotal - subtotal);
-  let total = cloverTotal > subtotal ? cloverTotal : subtotal + tax;
-
-  // Clover sometimes returns a total that does not include tax after modifiers are attached
-  // to existing line items. In that edge case, use Victor's configured estimated tax rate
-  // so customers are not undercharged at checkout.
-  if (subtotal > 0 && tax <= 0) {
-    tax = estimateTaxFromSubtotal(subtotal);
-    total = subtotal + tax;
-  }
-
-  return {
-    subtotal,
-    tax,
-    total
-  };
+  return buildAuthoritativeTotals(
+    cloverOrder,
+    calculateCartSubtotal(cart),
+    getConfiguredSalesTaxRate()
+  );
 }
 
 function getConfiguredSalesTaxRate() {

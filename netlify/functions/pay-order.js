@@ -1,4 +1,6 @@
 const crypto = require('crypto');
+const { getOrderingAvailability } = require('./ordering-availability');
+const { buildAuthoritativeTotals } = require('./checkout-pricing');
 
 const CLOVER_ECOMM_BASE =
   process.env.CLOVER_ENV === 'sandbox'
@@ -16,6 +18,14 @@ exports.handler = async function (event) {
   }
 
   try {
+    const availability = getOrderingAvailability();
+    if (!availability.orderingAvailable) {
+      return json(403, {
+        error: 'Online ordering is closed',
+        message: availability.orderingMessage
+      });
+    }
+
     const privateKey = process.env.CLOVER_PRIVATE_KEY;
     const merchantId = process.env.CLOVER_MERCHANT_ID;
     const accessToken = process.env.CLOVER_ACCESS_TOKEN;
@@ -40,6 +50,31 @@ exports.handler = async function (event) {
       });
     }
 
+    const orderDetails = await getOrderDetails({
+      merchantId,
+      accessToken,
+      orderId
+    });
+
+    if (!orderDetails?.success || !orderDetails?.order) {
+      return json(409, {
+        error: 'Unable to verify current Clover pricing',
+        message: 'Your order total could not be verified. Please return to the menu and try again.'
+      });
+    }
+
+    const taxRate = getConfiguredSalesTaxRate();
+    const verifiedTotals = buildAuthoritativeTotals(orderDetails.order, 0, taxRate);
+    const safeTipAmount = Math.max(0, Number(tipAmount || 0) || 0);
+    const verifiedAmount = verifiedTotals.total + safeTipAmount;
+
+    if (!verifiedTotals.subtotal || !verifiedAmount) {
+      return json(409, {
+        error: 'Unable to verify current Clover pricing',
+        message: 'Your order total could not be verified. Please return to the menu and try again.'
+      });
+    }
+
     const chargeResponse = await fetch(`${CLOVER_ECOMM_BASE}/v1/charges`, {
       method: 'POST',
       headers: {
@@ -49,13 +84,13 @@ exports.handler = async function (event) {
         'Idempotency-Key': crypto.randomUUID()
       },
       body: JSON.stringify({
-        amount,
+        amount: verifiedAmount,
         currency: 'usd',
         source,
         description: `Victor's Mexican Food website order ${orderId}`,
         metadata: {
           orderId,
-          tipAmount: String(Math.max(0, Number(tipAmount || 0) || 0))
+          tipAmount: String(safeTipAmount)
         }
       })
     });
@@ -77,26 +112,22 @@ exports.handler = async function (event) {
       orderId
     });
 
-    const orderDetails = await getOrderDetails({
-      merchantId,
-      accessToken,
-      orderId
-    });
-
     const confirmation = await sendConfirmationEmail({
       orderId,
-      amount,
+      amount: verifiedAmount,
       charge,
       orderDetails,
       customerEmail,
       customerName,
       pickupEstimate,
-      tipAmount
+      tipAmount: safeTipAmount
     });
 
     return json(200, {
       success: true,
       charge,
+      verifiedTotals,
+      chargedAmount: verifiedAmount,
       print: printResult,
       confirmation
     });
@@ -168,7 +199,7 @@ async function getOrderDetails({ merchantId, accessToken, orderId }) {
 
   try {
     const response = await fetch(
-      `${CLOVER_API_BASE}/v3/merchants/${merchantId}/orders/${encodeURIComponent(orderId)}?expand=lineItems,customers,orderFulfillmentEvent`,
+      `${CLOVER_API_BASE}/v3/merchants/${merchantId}/orders/${encodeURIComponent(orderId)}?expand=lineItems.modifications,customers,orderFulfillmentEvent`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -197,6 +228,11 @@ async function getOrderDetails({ merchantId, accessToken, orderId }) {
       message: error.message
     };
   }
+}
+
+function getConfiguredSalesTaxRate() {
+  const value = Number(process.env.SALES_TAX_RATE || process.env.CLOVER_SALES_TAX_RATE || 0.0875);
+  return Number.isFinite(value) && value > 0 ? value : 0.0875;
 }
 
 async function sendConfirmationEmail({

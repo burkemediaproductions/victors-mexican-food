@@ -4,6 +4,7 @@ const CLOVER_API_BASE =
     : 'https://api.clover.com';
 
 const CLOVER_PAGE_LIMIT = 1000;
+const { getOrderingAvailability } = require('./ordering-availability');
 
 const HIDDEN_MODIFIER_NAMES = new Set([
   '1 tortilla',
@@ -380,38 +381,6 @@ function hasCloverItemImage(item) {
       item.images?.elements?.length ||
       item.hasImage === true
   );
-}
-
-function getOrderingAvailability() {
-  const explicit = parseBooleanEnv(
-    process.env.CLOVER_ONLINE_ORDERING_ENABLED ??
-      process.env.ORDERING_ENABLED ??
-      process.env.ONLINE_ORDERING_ENABLED
-  );
-
-  const orderingAvailable = explicit === null ? true : explicit;
-
-  return {
-    orderingAvailable,
-    orderingSource: explicit === null ? 'default' : 'environment',
-    orderingMessage: orderingAvailable
-      ? ''
-      : process.env.CLOVER_ORDERING_DISABLED_MESSAGE ||
-        'Online ordering is currently unavailable. You can still browse the menu, then call us to order.'
-  };
-}
-
-function parseBooleanEnv(value) {
-  if (value === undefined || value === null || value === '') return null;
-  if (typeof value === 'boolean') return value;
-  if (typeof value === 'number') return value !== 0;
-
-  const normalized = String(value).trim().toLowerCase();
-
-  if (['true', '1', 'yes', 'y', 'on', 'open', 'enabled'].includes(normalized)) return true;
-  if (['false', '0', 'no', 'n', 'off', 'closed', 'disabled'].includes(normalized)) return false;
-
-  return null;
 }
 
 function formatMoney(cents) {
