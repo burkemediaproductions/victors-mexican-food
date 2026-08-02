@@ -59,17 +59,25 @@ function getOrderingAvailability(date = new Date(), env = process.env) {
 }
 
 function closedResult(env, source) {
-  const defaultMessage = source === 'special-closure'
+  const isSpecialClosure = source === 'special-closure';
+  const defaultMessage = isSpecialClosure
     ? 'Victor’s is closed for a family vacation from August 2 through August 21. We reopen Saturday, August 22. Online ordering will return when we reopen.'
     : 'Online ordering is currently closed. You can still browse the menu and return during our ordering hours.';
+
+  const specialClosureMessage =
+    env.ONLINE_ORDERING_SPECIAL_CLOSURE_MESSAGE ||
+    env.ONLINE_ORDERING_VACATION_MESSAGE;
+
+  const normalClosedMessage =
+    env.ONLINE_ORDERING_CLOSED_MESSAGE ||
+    env.CLOVER_ORDERING_DISABLED_MESSAGE;
 
   return {
     orderingAvailable: false,
     orderingSource: source,
-    orderingMessage:
-      env.CLOVER_ORDERING_DISABLED_MESSAGE ||
-      env.ONLINE_ORDERING_CLOSED_MESSAGE ||
-      defaultMessage
+    orderingMessage: isSpecialClosure
+      ? specialClosureMessage || defaultMessage
+      : normalClosedMessage || defaultMessage
   };
 }
 
