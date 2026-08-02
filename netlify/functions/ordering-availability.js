@@ -1,4 +1,6 @@
 const DEFAULT_TIME_ZONE = 'America/Los_Angeles';
+const DEFAULT_CLOSURE_START = '2026-08-02';
+const DEFAULT_CLOSURE_END = '2026-08-21';
 
 const DAY_ALIASES = {
   sun: 0, sunday: 0,
@@ -35,6 +37,13 @@ function getOrderingAvailability(date = new Date(), env = process.env) {
 
   const timeZone = env.ONLINE_ORDERING_TIMEZONE || DEFAULT_TIME_ZONE;
   const businessTime = getBusinessTime(date, timeZone);
+
+  const closureStart = env.ONLINE_ORDERING_CLOSED_START || DEFAULT_CLOSURE_START;
+  const closureEnd = env.ONLINE_ORDERING_CLOSED_END || DEFAULT_CLOSURE_END;
+  if (isDateInInclusiveRange(businessTime.dateKey, closureStart, closureEnd)) {
+    return closedResult(env, 'special-closure');
+  }
+
   const dayAllowed = !allowedDays.length || allowedDays.includes(businessTime.day);
   const timeAllowed = !timeRange || isMinuteInRange(businessTime.minuteOfDay, timeRange);
 
@@ -50,13 +59,17 @@ function getOrderingAvailability(date = new Date(), env = process.env) {
 }
 
 function closedResult(env, source) {
+  const defaultMessage = source === 'special-closure'
+    ? 'Victor’s is closed for a family vacation from August 2 through August 21. We reopen Saturday, August 22. Online ordering will return when we reopen.'
+    : 'Online ordering is currently closed. You can still browse the menu and return during our ordering hours.';
+
   return {
     orderingAvailable: false,
     orderingSource: source,
     orderingMessage:
       env.CLOVER_ORDERING_DISABLED_MESSAGE ||
       env.ONLINE_ORDERING_CLOSED_MESSAGE ||
-      'Online ordering is currently closed. You can still browse the menu and return during our ordering hours.'
+      defaultMessage
   };
 }
 
@@ -64,6 +77,9 @@ function getBusinessTime(date, timeZone) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
     weekday: 'short',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23'
@@ -78,7 +94,19 @@ function getBusinessTime(date, timeZone) {
     throw new Error(`Unable to determine ordering time in ${timeZone}`);
   }
 
-  return { day, minuteOfDay: hour * 60 + minute };
+  const year = Number(values.year);
+  const month = Number(values.month);
+  const calendarDay = Number(values.day);
+  const dateKey = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(calendarDay).padStart(2, '0')}`;
+
+  return { day, minuteOfDay: hour * 60 + minute, dateKey };
+}
+
+function isDateInInclusiveRange(dateKey, start, end) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || ''))) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(start || ''))) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(end || ''))) return false;
+  return dateKey >= start && dateKey <= end;
 }
 
 function parseDays(value) {

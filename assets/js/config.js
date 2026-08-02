@@ -1,5 +1,10 @@
 window.VICTORS_CONFIG = {
   orderingEnabled: true,
+  temporaryClosure: {
+    start: '2026-08-02',
+    end: '2026-08-21',
+    message: 'Victor’s is closed August 2–21 for a family vacation. We reopen Saturday, August 22.'
+  },
   cloverMenuEmbedUrl: 'https://victors-mexican-food-palm-desert.cloveronline.com/menu/all',
   cloverOrderingUrl: 'https://victors-mexican-food-palm-desert.cloveronline.com/menu/all',
   customMenuPdfUrl: '',

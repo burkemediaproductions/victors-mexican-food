@@ -4728,3 +4728,35 @@ body.modifier-dialog-open {
   }
 }
 
+
+
+/* Temporary family-vacation closure: August 2-21, 2026 */
+:root { --temporary-closure-height: 0px; }
+.temporary-closure-banner {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
+  padding: .65rem 1rem;
+  background: #8f1d1d;
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 5px 18px rgba(29,20,15,.2);
+}
+.temporary-closure-banner strong { font-weight: 800; }
+.temporary-closure-banner span { line-height: 1.35; }
+body.has-temporary-closure .site-header { top: var(--temporary-closure-height); }
+body.has-temporary-closure .mobile-menu { top: calc(var(--temporary-closure-height) + 79px); }
+@media (max-width: 720px) {
+  .temporary-closure-banner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: .1rem;
+    padding: .55rem .85rem;
+    text-align: left;
+    font-size: .9rem;
+  }
+}

@@ -7,6 +7,34 @@
   const yearNodes = document.querySelectorAll('[data-year]');
   yearNodes.forEach(n => n.textContent = new Date().getFullYear());
 
+  const getBusinessDateKey = (date = new Date()) => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Los_Angeles',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(date);
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
+  };
+
+  const closure = window.VICTORS_CONFIG?.temporaryClosure;
+  const todayKey = getBusinessDateKey();
+  if (closure?.start && closure?.end && todayKey >= closure.start && todayKey <= closure.end) {
+    const banner = document.createElement('aside');
+    banner.className = 'temporary-closure-banner';
+    banner.setAttribute('role', 'status');
+    banner.innerHTML = `<strong>Family Vacation Closure</strong><span>${closure.message}</span>`;
+    document.body.prepend(banner);
+    document.body.classList.add('has-temporary-closure');
+
+    const syncClosureHeight = () => {
+      document.documentElement.style.setProperty('--temporary-closure-height', `${banner.offsetHeight}px`);
+    };
+    syncClosureHeight();
+    window.addEventListener('resize', syncClosureHeight, { passive: true });
+  }
+
   const syncHeaderState = () => {
     body.classList.toggle('scrolled', window.scrollY > 24);
   };
