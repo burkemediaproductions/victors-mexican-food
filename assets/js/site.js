@@ -18,13 +18,13 @@
     return `${values.year}-${values.month}-${values.day}`;
   };
 
-  const closure = window.VICTORS_CONFIG?.temporaryClosure;
-  const todayKey = getBusinessDateKey();
-  if (closure?.start && closure?.end && todayKey >= closure.start && todayKey <= closure.end) {
+  const showTemporaryClosureBanner = (message) => {
+    if (document.querySelector('.temporary-closure-banner')) return;
+
     const banner = document.createElement('aside');
     banner.className = 'temporary-closure-banner';
     banner.setAttribute('role', 'status');
-    banner.innerHTML = `<strong>Family Vacation Closure</strong><span>${closure.message}</span>`;
+    banner.innerHTML = `<strong>Family Vacation Closure</strong><span>${message}</span>`;
     document.body.prepend(banner);
     document.body.classList.add('has-temporary-closure');
 
@@ -33,7 +33,29 @@
     };
     syncClosureHeight();
     window.addEventListener('resize', syncClosureHeight, { passive: true });
-  }
+  };
+
+  const syncTemporaryClosureBanner = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/ordering-status', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Ordering status returned ${response.status}`);
+      const status = await response.json();
+      if (status.orderingSource === 'special-closure') {
+        showTemporaryClosureBanner(status.orderingMessage);
+      }
+      return;
+    } catch (error) {
+      console.warn('Could not load live closure status; using website fallback.', error);
+    }
+
+    const closure = window.VICTORS_CONFIG?.temporaryClosure;
+    const todayKey = getBusinessDateKey();
+    if (closure?.start && closure?.end && todayKey >= closure.start && todayKey <= closure.end) {
+      showTemporaryClosureBanner(closure.message);
+    }
+  };
+
+  syncTemporaryClosureBanner();
 
   const syncHeaderState = () => {
     body.classList.toggle('scrolled', window.scrollY > 24);

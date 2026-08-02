@@ -1,7 +1,7 @@
 window.VICTORS_CONFIG = {
   orderingEnabled: true,
   temporaryClosure: {
-    start: '2026-08-02',
+    start: '2026-08-01',
     end: '2026-08-21',
     message: 'Victor’s is closed August 2–21 for a family vacation. We reopen Saturday, August 22.'
   },
